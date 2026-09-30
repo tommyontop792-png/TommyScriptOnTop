@@ -1,4 +1,4 @@
--- ==================== OBSIDIAN UI ====================
+-- ==================== TOMMY SCRIPT ====================
 local repo = "https://raw.githubusercontent.com/ApparentlyZen/Obsidian-Zen/main/"
 local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
 local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
@@ -266,7 +266,7 @@ local function isValidStopCondition()
         or (tool and tool.Name == "Cursed Dual Katana" and cursedZActive)
 end
 
--- ==================== BOOSTS (Sanguine, Diamond, EClaw) ====================
+-- ==================== BOOSTS ====================
 local multiEnabled = false; local multiPower = 400; local multiDuration = 0.9
 local multiCharging = false; local multiChargeStart = 0; local multiRequiredCharge = 1.0
 
@@ -438,7 +438,7 @@ end)()
 lp.CharacterAdded:Connect(function(char) EClawBoost:Init(char) end)
 if lp.Character then EClawBoost:Init(lp.Character) end
 
--- ==================== FAKE ITEMS (Headless / Korblox) ====================
+-- ==================== FAKE ITEMS ====================
 local fakeHeadlessEnabled = false
 local fakeHeadlessVersion = "V1"
 local fakeKorbloxEnabled = false
@@ -707,7 +707,7 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- ==================== CORRECTION SUPER JUMP V3 ====================
+-- ==================== SUPER JUMP V3 ====================
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if superJumpEnabled and superJumpMode == "V3" and input.KeyCode == Enum.KeyCode.Space then
@@ -841,7 +841,7 @@ local function DestroySpeedMiniToggle()
     if speedMiniGui then speedMiniGui:Destroy(); speedMiniGui = nil; speedMiniButton = nil end
 end
 
--- ==================== DASH GLITCH (Skull Guitar) – V1 & V2 uniquement ====================
+-- ==================== DASH GLITCH ====================
 local DashGlitch = (function()
     local module = {}
     local enabled = false
@@ -1214,7 +1214,7 @@ local function startDeleteShipLoop()
     end)
 end
 
--- ==================== WALK ON WATER MODULE ====================
+-- ==================== WALK ON WATER ====================
 local WalkOnWaterEnabled = false
 local waterPart = nil
 
@@ -1249,7 +1249,7 @@ task.spawn(function()
     end
 end)
 
--- ==================== ANTI LAVA MODULE ====================
+-- ==================== ANTI LAVA ====================
 local antiLavaActive = false
 local antiLavaConnection = nil
 
@@ -1279,7 +1279,7 @@ local function stopAntiLava()
     end
 end
 
--- ==================== BIG SKIN BUG MODULE ====================
+-- ==================== BIG SKIN BUG ====================
 local bigSkinBugEnabled = false
 local bigSkinBugOriginal = {}
 local bigSkinBugConnections = {}
@@ -1396,7 +1396,7 @@ local function disableBigSkin()
     end
 end
 
--- ==================== ESP MODULE ====================
+-- ==================== ESP MODULE (FIXED) ====================
 local ESPModule = (function()
     local module = {}
     local ESPEnabled = false
@@ -1405,11 +1405,17 @@ local ESPModule = (function()
     local ShowAllPlayers = false
     local LineOrigin = "Player"
     local drawings = {}
-    local function clearDrawings() for _, d in pairs(drawings) do pcall(function() d:Remove() end) end drawings = {} end
+    
+    local function clearDrawings() 
+        for _, d in pairs(drawings) do pcall(function() d:Remove() end) end 
+        drawings = {} 
+    end
+    
     local function getColor(name)
         local colors = { Red=Color3.new(1,0,0), Green=Color3.new(0,1,0), Blue=Color3.new(0,0,1), Yellow=Color3.new(1,1,0), White=Color3.new(1,1,1), Black=Color3.new(0,0,0), Cyan=Color3.new(0,1,1), Magenta=Color3.new(1,0,1) }
         return colors[name] or Color3.new(1,1,1)
     end
+    
     local function isEnemy(plr)
         if plr == lp then return false end
         if ShowAllPlayers then return true end
@@ -1422,76 +1428,99 @@ local ESPModule = (function()
         end
         return true
     end
+    
     local function updateESP()
         clearDrawings()
         if not ESPEnabled then return end
         local myHrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
         local vp = camera.ViewportSize
         for _, plr in pairs(Players:GetPlayers()) do
-            if plr == lp or not plr.Character or not plr.Character:FindFirstChild("HumanoidRootPart") then continue end
-            if not isEnemy(plr) then continue end
-            local hrp = plr.Character.HumanoidRootPart
-            local hum = plr.Character:FindFirstChildOfClass("Humanoid")
-            if not hum or hum.Health <= 0 then continue end
-            local pos, onScreen = camera:WorldToViewportPoint(hrp.Position)
-            local screenPos = Vector2.new(pos.X, pos.Y)
-            local isVisible = onScreen
-            local lineEnd = screenPos
-            if pos.Z < 0 then
-                local center = Vector2.new(vp.X/2, vp.Y/2)
-                local dirToTarget = (center - screenPos).Unit
-                local maxX, maxY = (vp.X/2)-5, (vp.Y/2)-5
-                local t = 1
-                if math.abs(dirToTarget.X)>0.001 and math.abs(dirToTarget.Y)>0.001 then t = math.min(math.abs(maxX/dirToTarget.X), math.abs(maxY/dirToTarget.Y))
-                elseif math.abs(dirToTarget.X)>0.001 then t = math.abs(maxX/dirToTarget.X)
-                elseif math.abs(dirToTarget.Y)>0.001 then t = math.abs(maxY/dirToTarget.Y) end
-                lineEnd = center + dirToTarget * t
-            end
-            local boxCol = getColor(BoxColor)
-            local txtCol = getColor(TextColor)
-            local lineCol = getColor(LineColor)
-            if ShowBox and isVisible then
-                local size = Vector2.new(2000/(camera.CFrame.Position-hrp.Position).Magnitude, 4000/(camera.CFrame.Position-hrp.Position).Magnitude)
-                local topLeft = Vector2.new(pos.X-size.X/2, pos.Y-size.Y/2)
-                local topRight = Vector2.new(pos.X+size.X/2, pos.Y-size.Y/2)
-                local bottomLeft = Vector2.new(pos.X-size.X/2, pos.Y+size.Y/2)
-                local bottomRight = Vector2.new(pos.X+size.X/2, pos.Y+size.Y/2)
-                local function addLine(p1,p2) local l=Drawing.new("Line"); l.Visible=true; l.Color=boxCol; l.Thickness=1; l.From=p1; l.To=p2; table.insert(drawings,l) end
-                addLine(topLeft, topRight); addLine(topRight, bottomRight); addLine(bottomRight, bottomLeft); addLine(bottomLeft, topLeft)
-            end
-            if ShowName and isVisible then
-                local size = Vector2.new(2000/(camera.CFrame.Position-hrp.Position).Magnitude, 4000/(camera.CFrame.Position-hrp.Position).Magnitude)
-                local t = Drawing.new("Text"); t.Visible=true; t.Text=plr.Name; t.Color=txtCol; t.Size=13; t.Center=true; t.Position=Vector2.new(pos.X, pos.Y-size.Y/2-15); t.Font=2; table.insert(drawings,t)
-            end
-            if ShowDistance and isVisible then
-                local dist = math.floor((hrp.Position-(myHrp and myHrp.Position or Vector3.zero)).Magnitude)
-                local t = Drawing.new("Text"); t.Visible=true; t.Text=dist.."m"; t.Color=txtCol; t.Size=13; t.Center=true; t.Position=Vector2.new(pos.X, pos.Y+size.Y/2+2); t.Font=2; table.insert(drawings,t)
-            end
-            if ShowHealth and isVisible then
-                local size = Vector2.new(2000/(camera.CFrame.Position-hrp.Position).Magnitude, 4000/(camera.CFrame.Position-hrp.Position).Magnitude)
-                local hpRatio = math.clamp(hum.Health/hum.MaxHealth,0,1)
-                local barW, barH = size.X, 4
-                local barPos = Vector2.new(pos.X-barW/2, pos.Y+size.Y/2+12)
-                local bg = Drawing.new("Square"); bg.Visible=true; bg.Color=Color3.new(0,0,0); bg.Filled=true; bg.Size=Vector2.new(barW,barH); bg.Position=barPos; table.insert(drawings,bg)
-                local fg = Drawing.new("Square"); fg.Visible=true; fg.Color=Color3.new(1-hpRatio, hpRatio, 0); fg.Filled=true; fg.Size=Vector2.new(barW*hpRatio,barH); fg.Position=barPos; table.insert(drawings,fg)
-            end
-            if ShowLine then
-                local lineStart = nil
-                if LineOrigin == "Player" then
-                    if myHrp then
-                        local myPos, onScr = camera:WorldToViewportPoint(myHrp.Position)
-                        if onScr then lineStart = Vector2.new(myPos.X, myPos.Y) else lineStart = Vector2.new(vp.X/2, vp.Y/2) end
-                    else lineStart = Vector2.new(vp.X/2, vp.Y/2) end
-                elseif LineOrigin == "Center" then lineStart = Vector2.new(vp.X/2, vp.Y/2)
-                elseif LineOrigin == "Top" then lineStart = Vector2.new(vp.X/2, 0) end
-                if lineStart then
-                    local l = Drawing.new("Line"); l.Visible=true; l.Color=lineCol; l.Thickness=1; l.From=lineStart; l.To=lineEnd; table.insert(drawings,l)
+            if plr ~= lp and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and isEnemy(plr) then
+                local hrp = plr.Character.HumanoidRootPart
+                local hum = plr.Character:FindFirstChildOfClass("Humanoid")
+                if hum and hum.Health > 0 then
+                    local pos, onScreen = camera:WorldToViewportPoint(hrp.Position)
+                    local screenPos = Vector2.new(pos.X, pos.Y)
+                    local isVisible = onScreen
+                    local lineEnd = screenPos
+                    if pos.Z < 0 then
+                        local center = Vector2.new(vp.X/2, vp.Y/2)
+                        local dirToTarget = (center - screenPos).Unit
+                        local maxX, maxY = (vp.X/2)-5, (vp.Y/2)-5
+                        local t = 1
+                        if math.abs(dirToTarget.X)>0.001 and math.abs(dirToTarget.Y)>0.001 then 
+                            t = math.min(math.abs(maxX/dirToTarget.X), math.abs(maxY/dirToTarget.Y))
+                        elseif math.abs(dirToTarget.X)>0.001 then 
+                            t = math.abs(maxX/dirToTarget.X)
+                        elseif math.abs(dirToTarget.Y)>0.001 then 
+                            t = math.abs(maxY/dirToTarget.Y) 
+                        end
+                        lineEnd = center + dirToTarget * t
+                    end
+                    local boxCol = getColor(BoxColor)
+                    local txtCol = getColor(TextColor)
+                    local lineCol = getColor(LineColor)
+                    local magnitude = (camera.CFrame.Position-hrp.Position).Magnitude
+                    local boxSize = Vector2.new(2000/magnitude, 4000/magnitude)
+                    
+                    if ShowBox and isVisible then
+                        local topLeft = Vector2.new(pos.X-boxSize.X/2, pos.Y-boxSize.Y/2)
+                        local topRight = Vector2.new(pos.X+boxSize.X/2, pos.Y-boxSize.Y/2)
+                        local bottomLeft = Vector2.new(pos.X-boxSize.X/2, pos.Y+boxSize.Y/2)
+                        local bottomRight = Vector2.new(pos.X+boxSize.X/2, pos.Y+boxSize.Y/2)
+                        local function addLine(p1,p2) 
+                            local l=Drawing.new("Line"); l.Visible=true; l.Color=boxCol; l.Thickness=1; l.From=p1; l.To=p2; table.insert(drawings,l) 
+                        end
+                        addLine(topLeft, topRight); addLine(topRight, bottomRight); addLine(bottomRight, bottomLeft); addLine(bottomLeft, topLeft)
+                    end
+                    if ShowName and isVisible then
+                        local t = Drawing.new("Text"); t.Visible=true; t.Text=plr.Name; t.Color=txtCol; t.Size=13; t.Center=true; t.Position=Vector2.new(pos.X, pos.Y-boxSize.Y/2-15); t.Font=2; table.insert(drawings,t)
+                    end
+                    if ShowDistance and isVisible then
+                        local dist = math.floor((hrp.Position-(myHrp and myHrp.Position or Vector3.zero)).Magnitude)
+                        local t = Drawing.new("Text"); t.Visible=true; t.Text=dist.."m"; t.Color=txtCol; t.Size=13; t.Center=true; t.Position=Vector2.new(pos.X, pos.Y+boxSize.Y/2+2); t.Font=2; table.insert(drawings,t)
+                    end
+                    if ShowHealth and isVisible then
+                        local hpRatio = math.clamp(hum.Health/hum.MaxHealth,0,1)
+                        local barW, barH = boxSize.X, 4
+                        local barPos = Vector2.new(pos.X-barW/2, pos.Y+boxSize.Y/2+12)
+                        local bg = Drawing.new("Square"); bg.Visible=true; bg.Color=Color3.new(0,0,0); bg.Filled=true; bg.Size=Vector2.new(barW,barH); bg.Position=barPos; table.insert(drawings,bg)
+                        local fg = Drawing.new("Square"); fg.Visible=true; fg.Color=Color3.new(1-hpRatio, hpRatio, 0); fg.Filled=true; fg.Size=Vector2.new(barW*hpRatio,barH); fg.Position=barPos; table.insert(drawings,fg)
+                    end
+                    if ShowLine then
+                        local lineStart = nil
+                        if LineOrigin == "Player" then
+                            if myHrp then
+                                local myPos, onScr = camera:WorldToViewportPoint(myHrp.Position)
+                                if onScr then lineStart = Vector2.new(myPos.X, myPos.Y) else lineStart = Vector2.new(vp.X/2, vp.Y/2) end
+                            else 
+                                lineStart = Vector2.new(vp.X/2, vp.Y/2) 
+                            end
+                        elseif LineOrigin == "Center" then 
+                            lineStart = Vector2.new(vp.X/2, vp.Y/2)
+                        elseif LineOrigin == "Top" then 
+                            lineStart = Vector2.new(vp.X/2, 0) 
+                        end
+                        if lineStart then
+                            local l = Drawing.new("Line"); l.Visible=true; l.Color=lineCol; l.Thickness=1; l.From=lineStart; l.To=lineEnd; table.insert(drawings,l)
+                        end
+                    end
                 end
             end
         end
     end
+    
     local espConnection
-    function module:SetESPEnabled(state) ESPEnabled=state; if state then if espConnection then espConnection:Disconnect() end espConnection=RunService.RenderStepped:Connect(updateESP) else if espConnection then espConnection:Disconnect(); espConnection=nil end clearDrawings() end end
+    function module:SetESPEnabled(state) 
+        ESPEnabled=state
+        if state then 
+            if espConnection then espConnection:Disconnect() end 
+            espConnection=RunService.RenderStepped:Connect(updateESP) 
+        else 
+            if espConnection then espConnection:Disconnect(); espConnection=nil end 
+            clearDrawings() 
+        end 
+    end
     function module:SetShowBox(v) ShowBox=v end
     function module:SetShowName(v) ShowName=v end
     function module:SetShowDistance(v) ShowDistance=v end
@@ -1515,13 +1544,15 @@ local M1Extender = (function()
         if not myRoot then return nil end
         local target, shortestDist = nil, maxRange
         for _, folder in pairs({workspace:FindFirstChild("Enemies"), workspace:FindFirstChild("Characters")}) do
-            if folder then for _, v in pairs(folder:GetChildren()) do
-                local eRoot = v:FindFirstChild("HumanoidRootPart"); local eHum = v:FindFirstChildOfClass("Humanoid")
-                if v ~= myChar and eRoot and eHum and eHum.Health > 0 then
-                    local dist = (eRoot.Position - myRoot.Position).Magnitude
-                    if dist < shortestDist then shortestDist = dist; target = v end
-                end
-            end end
+            if folder then 
+                for _, v in pairs(folder:GetChildren()) do
+                    local eRoot = v:FindFirstChild("HumanoidRootPart"); local eHum = v:FindFirstChildOfClass("Humanoid")
+                    if v ~= myChar and eRoot and eHum and eHum.Health > 0 then
+                        local dist = (eRoot.Position - myRoot.Position).Magnitude
+                        if dist < shortestDist then shortestDist = dist; target = v end
+                    end
+                end 
+            end
         end
         return target
     end
@@ -1537,7 +1568,9 @@ local M1Extender = (function()
                     pcall(function()
                         RegisterAttack:FireServer()
                         local hitData = {}
-                        for _, part in pairs(target:GetChildren()) do if part:IsA("BasePart") then table.insert(hitData, {target, part}) end end
+                        for _, part in pairs(target:GetChildren()) do 
+                            if part:IsA("BasePart") then table.insert(hitData, {target, part}) end 
+                        end
                         RegisterHit:FireServer(head, hitData, {}, sessionId)
                     end)
                 end
@@ -1549,7 +1582,7 @@ local M1Extender = (function()
     return M
 end)()
 
--- ==================== GUN CLICK SL MODULE ====================
+-- ==================== GUN CLICK SL ====================
 local GunClickSL = (function()
     local enabled = false
     local aimPos = nil
@@ -1584,6 +1617,7 @@ local GunClickSL = (function()
     local function installHook()
         if hookInstalled then return end
         hookInstalled = true
+        if not getrawmetatable or not setreadonly or not newcclosure then return end
         local mt = getrawmetatable(game)
         local oldNamecall = mt.__namecall
         setreadonly(mt, false)
@@ -1630,23 +1664,12 @@ local GunClickSL = (function()
     return M
 end)()
 
--- ==================== SILENT AIM MODULE ====================
+-- ==================== SILENT AIM MODULE (FIXED) ====================
 SilentAimModule = (function()
     local module = {}
-    local Players = game:GetService("Players")
-    local player = Players.LocalPlayer
-    local UserInputService = game:GetService("UserInputService")
-    local RunService = game:GetService("RunService")
+    local player = lp
     local CoreGui = game:GetService("CoreGui")
-    local camera = workspace.CurrentCamera
-    local RS = game:GetService("ReplicatedStorage")
-    local commE = RS:WaitForChild("Remotes"):WaitForChild("CommE")
-    local MouseModule = RS:FindFirstChild("Mouse")
-    local Mouse = nil
-    if MouseModule and typeof(MouseModule) == "Instance" then
-        local ok, res = pcall(require, MouseModule)
-        if ok and type(res) == "table" then Mouse = res end
-    end
+    local hasMetatable = getrawmetatable and setreadonly and newcclosure
 
     local SilentAimPlayersEnabled = false
     local SilentAimNPCsEnabled = false
@@ -1661,7 +1684,7 @@ SilentAimModule = (function()
     local PlayersPosition, NPCPosition = nil, nil
     local Selectedplayer = nil
     local characterConnections = {}
-    local Skills = {"X"}; local Booms = {}; local maxRange = 1000
+    local Skills = {"X"}; local maxRange = 1000
     local BlacklistedKeys = {
         Melee = { Z=false, X=false, C=false },
         Sword = { Z=false, X=false },
@@ -1727,7 +1750,11 @@ SilentAimModule = (function()
     end
 
     local ScreenGui = Instance.new("ScreenGui"); ScreenGui.Name="FOV_System_Tommy"; ScreenGui.ResetOnSpawn=false; ScreenGui.IgnoreGuiInset=true
-    if syn and syn.protect_gui then syn.protect_gui(ScreenGui); ScreenGui.Parent=CoreGui elseif getgui then ScreenGui.Parent=getgui() else ScreenGui.Parent=CoreGui or player:WaitForChild("PlayerGui") end
+    pcall(function()
+        if syn and syn.protect_gui then syn.protect_gui(ScreenGui); ScreenGui.Parent=CoreGui 
+        elseif getgui then ScreenGui.Parent=getgui() 
+        else ScreenGui.Parent=CoreGui or player:WaitForChild("PlayerGui") end
+    end)
     local FOVFrame = Instance.new("Frame"); FOVFrame.Name="FOVCircle"; FOVFrame.AnchorPoint=Vector2.new(0.5,0.5); FOVFrame.BackgroundTransparency=1; FOVFrame.Visible=false; FOVFrame.Parent=ScreenGui
     local UIStroke = Instance.new("UIStroke"); UIStroke.Color=Color3.fromRGB(255,0,0); UIStroke.Thickness=2; UIStroke.Parent=FOVFrame
     local FOVCorner = Instance.new("UICorner"); FOVCorner.CornerRadius=UDim.new(1,0); FOVCorner.Parent=FOVFrame
@@ -1755,8 +1782,14 @@ SilentAimModule = (function()
         if BlacklistedKeys[cat] and BlacklistedKeys[cat][key] ~= nil then return BlacklistedKeys[cat][key] end
         return false
     end
-    local function getHRP(model) if model and model:FindFirstChild("HumanoidRootPart") then return model.HumanoidRootPart end return nil end
-    local function clearConnections() for _,c in ipairs(characterConnections) do pcall(function() c:Disconnect() end) end characterConnections = {} end
+    local function getHRP(model) 
+        if model and model:FindFirstChild("HumanoidRootPart") then return model.HumanoidRootPart end 
+        return nil 
+    end
+    local function clearConnections() 
+        for _,c in ipairs(characterConnections) do pcall(function() c:Disconnect() end) end 
+        characterConnections = {} 
+    end
 
     local lastVelocity = nil
     local lastDirection = nil
@@ -1810,7 +1843,11 @@ SilentAimModule = (function()
         local myGui = player:FindFirstChild("PlayerGui")
         if not myGui then return false end
         local scrolling = myGui:FindFirstChild("Main") and myGui.Main:FindFirstChild("Allies") and myGui.Main.Allies:FindFirstChild("Container") and myGui.Main.Allies.Container:FindFirstChild("Allies") and myGui.Main.Allies.Container.Allies:FindFirstChild("ScrollingFrame")
-        if scrolling then for _,frame in pairs(scrolling:GetDescendants()) do if frame:IsA("ImageButton") and frame.Name==targetplayer.Name then return true end end end
+        if scrolling then 
+            for _,frame in pairs(scrolling:GetDescendants()) do 
+                if frame:IsA("ImageButton") and frame.Name==targetplayer.Name then return true end 
+            end 
+        end
         return false
     end
     local function isTargetProtected(targetPlayer)
@@ -1841,7 +1878,9 @@ SilentAimModule = (function()
     end
     local function isTargetValid(hrp, lpHRP, aimMode, fovRadius, fovType)
         if not hrp or not lpHRP then return false end
-        if aimMode=="180" then local dir=(hrp.Position-lpHRP.Position).Unit; if lpHRP.CFrame.LookVector:Dot(dir)<0 then return false end
+        if aimMode=="180" then 
+            local dir=(hrp.Position-lpHRP.Position).Unit
+            if lpHRP.CFrame.LookVector:Dot(dir)<0 then return false end
         elseif aimMode=="FOV" then
             local screenPos, onScreen = camera:WorldToViewportPoint(hrp.Position)
             if not onScreen then return false end
@@ -1874,9 +1913,17 @@ SilentAimModule = (function()
         end
         if #valid==0 then return nil end
         if AimMode == "360" or AimMode == "180" then
-            if TargetPriority=="Nearest" then table.sort(valid, function(a,b) return a.Distance<b.Distance end)
-            elseif TargetPriority=="Low HP" then table.sort(valid, function(a,b) return a.Humanoid.Health<b.Humanoid.Health end)
-            elseif TargetPriority=="Looking At Me" then table.sort(valid, function(a,b) local dirA=(lpHRP.Position-a.HRP.Position).Unit; local lookA=a.HRP.CFrame.LookVector; local dirB=(lpHRP.Position-b.HRP.Position).Unit; local lookB=b.HRP.CFrame.LookVector; return lookA:Dot(dirA)>lookB:Dot(dirB) end) end
+            if TargetPriority=="Nearest" then 
+                table.sort(valid, function(a,b) return a.Distance<b.Distance end)
+            elseif TargetPriority=="Low HP" then 
+                table.sort(valid, function(a,b) return a.Humanoid.Health<b.Humanoid.Health end)
+            elseif TargetPriority=="Looking At Me" then 
+                table.sort(valid, function(a,b) 
+                    local dirA=(lpHRP.Position-a.HRP.Position).Unit; local lookA=a.HRP.CFrame.LookVector
+                    local dirB=(lpHRP.Position-b.HRP.Position).Unit; local lookB=b.HRP.CFrame.LookVector
+                    return lookA:Dot(dirA)>lookB:Dot(dirB) 
+                end) 
+            end
         else
             local center = getFOVCenter(FOVMode)
             table.sort(valid, function(a,b)
@@ -1908,8 +1955,7 @@ SilentAimModule = (function()
         if not lpHRP then return nil end
         local valid = {}
         for _,pl in ipairs(Players:GetPlayers()) do
-            if pl~=player and pl.Character and pl.Character.Parent then
-                if not isEnemy(pl) then continue end
+            if pl~=player and pl.Character and pl.Character.Parent and isEnemy(pl) then
                 local hum = pl.Character:FindFirstChildWhichIsA("Humanoid"); local hrp = getHRP(pl.Character)
                 if hum and hum.Health>0 and hrp then
                     if isTargetValid(hrp, lpHRP, SoruTargetingMode, SoruFOVRadius, SoruFOVType) then
@@ -1921,9 +1967,17 @@ SilentAimModule = (function()
         end
         if #valid==0 then return nil end
         if SoruTargetingMode == "360" or SoruTargetingMode == "180" then
-            if SoruTargetPriority=="Nearest" then table.sort(valid, function(a,b) return a.Distance<b.Distance end)
-            elseif SoruTargetPriority=="Low HP" then table.sort(valid, function(a,b) return a.Humanoid.Health<b.Humanoid.Health end)
-            elseif SoruTargetPriority=="Looking At Me" then table.sort(valid, function(a,b) local dirA=(lpHRP.Position-a.HRP.Position).Unit; local lookA=a.HRP.CFrame.LookVector; local dirB=(lpHRP.Position-b.HRP.Position).Unit; local lookB=b.HRP.CFrame.LookVector; return lookA:Dot(dirA)>lookB:Dot(dirB) end) end
+            if SoruTargetPriority=="Nearest" then 
+                table.sort(valid, function(a,b) return a.Distance<b.Distance end)
+            elseif SoruTargetPriority=="Low HP" then 
+                table.sort(valid, function(a,b) return a.Humanoid.Health<b.Humanoid.Health end)
+            elseif SoruTargetPriority=="Looking At Me" then 
+                table.sort(valid, function(a,b) 
+                    local dirA=(lpHRP.Position-a.HRP.Position).Unit; local lookA=a.HRP.CFrame.LookVector
+                    local dirB=(lpHRP.Position-b.HRP.Position).Unit; local lookB=b.HRP.CFrame.LookVector
+                    return lookA:Dot(dirA)>lookB:Dot(dirB) 
+                end) 
+            end
         else
             local center = getFOVCenter(SoruFOVType)
             table.sort(valid, function(a,b)
@@ -1955,7 +2009,11 @@ SilentAimModule = (function()
         end
     end)
 
-    local function handleAttackRotation(key)
+    local function updateTracerColor()
+        if not tracerBeam then return end
+        local colorMap = { Red=Color3.fromRGB(255,0,0), Green=Color3.fromRGB(0,255,0), Blue=Color3.fromRGB(0,0,255), Yellow=Color3.fromRGB(255,255,0), White=Color3.fromRGB(255,255,255) }
+        local col = colorMap[TracerColor] or Color3.fromRGB(255,0,0)
+        tracerBeam.Color = ColorSequence.new(col)
     end
 
     local function createTracer()
@@ -1967,26 +2025,24 @@ SilentAimModule = (function()
         tracerBeam.Width0=0.1; tracerBeam.Width1=0.1; tracerBeam.FaceCamera=true
         updateTracerColor()
     end
-    local function destroyTracer() if tracerModel then tracerModel:Destroy(); tracerModel=nil; tracerAttachment0=nil; tracerAttachment1=nil; tracerBeam=nil end end
-    local function updateTracerColor()
-        if not tracerBeam then return end
-        local colorMap = { Red=Color3.fromRGB(255,0,0), Green=Color3.fromRGB(0,255,0), Blue=Color3.fromRGB(0,0,255), Yellow=Color3.fromRGB(255,255,0), White=Color3.fromRGB(255,255,255) }
-        local col = colorMap[TracerColor] or Color3.fromRGB(255,0,0)
-        tracerBeam.Color = ColorSequence.new(col)
+    local function destroyTracer() 
+        if tracerModel then tracerModel:Destroy(); tracerModel=nil; tracerAttachment0=nil; tracerAttachment1=nil; tracerBeam=nil end 
     end
+    
     function module:SetTracerEnabled(state) TracerEnabled=state; if state then createTracer() else destroyTracer() end end
     function module:SetTracerColor(color) TracerColor=color; updateTracerColor() end
 
     local function installMouseOverride()
+        if not hasMetatable then return end
         local MouseModuleInstance = RS:FindFirstChild("Mouse")
         if not MouseModuleInstance then return end
-        local MouseModule = nil
-        pcall(function() MouseModule = require(MouseModuleInstance) end)
-        if not MouseModule or typeof(MouseModule) ~= "table" then return end
-        local realStore = { Hit = rawget(MouseModule, "Hit"), Target = rawget(MouseModule, "Target") }
-        local mmt = getrawmetatable(MouseModule)
-        if mmt then setreadonly(mmt, false) else mmt = {}; setmetatable(MouseModule, mmt) end
-        rawset(MouseModule, "Hit", nil); rawset(MouseModule, "Target", nil)
+        local MouseModuleData = nil
+        pcall(function() MouseModuleData = require(MouseModuleInstance) end)
+        if not MouseModuleData or typeof(MouseModuleData) ~= "table" then return end
+        local realStore = { Hit = rawget(MouseModuleData, "Hit"), Target = rawget(MouseModuleData, "Target") }
+        local mmt = getrawmetatable(MouseModuleData)
+        if not mmt then return end
+        setreadonly(mmt, false)
         mmt.__index = function(self, key)
             if key == "Hit" then
                 if OverrideGodhumanSanguineEnabled and (SilentAimPlayersEnabled or SilentAimNPCsEnabled) and (PlayersPosition or NPCPosition) and isOverrideTool(currentTool) and currentSkillKey == "Z" and not isKeyCurrentlyBlacklisted(currentSkillKey) then
@@ -2007,7 +2063,7 @@ SilentAimModule = (function()
         end
         setreadonly(mmt, true)
     end
-    installMouseOverride()
+    pcall(installMouseOverride)
 
     UserInputService.InputBegan:Connect(function(input, gp)
         if gp then return end
@@ -2023,28 +2079,52 @@ SilentAimModule = (function()
             btn.Activated:Connect(function() setCurrentSkillKey(key) end)
         end
     end
-    spawn(function()
-        while not player.PlayerGui do wait(0.5) end
+    task.spawn(function()
+        while not player.PlayerGui do task.wait(0.5) end
         local pg = player.PlayerGui; local main = pg:WaitForChild("Main",10)
         if main then
             local skills = main:WaitForChild("Skills",10)
             if skills then
-                for _,wf in ipairs(skills:GetChildren()) do if wf:IsA("GuiObject") then for _,b in ipairs(wf:GetChildren()) do if b:IsA("ImageButton") or b:IsA("TextButton") then hookMobileButton(b) end end end end
-                skills.ChildAdded:Connect(function(wf) if wf:IsA("GuiObject") then for _,b in ipairs(wf:GetChildren()) do if b:IsA("ImageButton") or b:IsA("TextButton") then hookMobileButton(b) end end end end)
+                for _,wf in ipairs(skills:GetChildren()) do 
+                    if wf:IsA("GuiObject") then 
+                        for _,b in ipairs(wf:GetChildren()) do 
+                            if b:IsA("ImageButton") or b:IsA("TextButton") then hookMobileButton(b) end 
+                        end 
+                    end 
+                end
+                skills.ChildAdded:Connect(function(wf) 
+                    if wf:IsA("GuiObject") then 
+                        for _,b in ipairs(wf:GetChildren()) do 
+                            if b:IsA("ImageButton") or b:IsA("TextButton") then hookMobileButton(b) end 
+                        end 
+                    end 
+                end)
             end
         end
     end)
 
     local function getSkillKeyFromArgs(args)
-        for _,arg in ipairs(args) do if type(arg)=="string" and table.find(SKILL_KEYS, arg) then return arg end end
+        for _,arg in ipairs(args) do 
+            if type(arg)=="string" and table.find(SKILL_KEYS, arg) then return arg end 
+        end
         return nil
     end
 
     local function startRenderLoop()
         if not renderConnection then
             renderConnection = RunService.RenderStepped:Connect(function()
-                if ShowFOVCircle then local center=getFOVCenter(FOVMode); FOVFrame.Position=UDim2.new(0,center.X,0,center.Y); FOVFrame.Size=UDim2.new(0,FOVRadius*2,0,FOVRadius*2); FOVFrame.Visible=true else FOVFrame.Visible=false end
-                if SoruShowFOVCircle then local center=getFOVCenter(SoruFOVType); SoruFOVFrame.Position=UDim2.new(0,center.X,0,center.Y); SoruFOVFrame.Size=UDim2.new(0,SoruFOVRadius*2,0,SoruFOVRadius*2); SoruFOVFrame.Visible=true else SoruFOVFrame.Visible=false end
+                if ShowFOVCircle then 
+                    local center=getFOVCenter(FOVMode)
+                    FOVFrame.Position=UDim2.new(0,center.X,0,center.Y); FOVFrame.Size=UDim2.new(0,FOVRadius*2,0,FOVRadius*2); FOVFrame.Visible=true 
+                else 
+                    FOVFrame.Visible=false 
+                end
+                if SoruShowFOVCircle then 
+                    local center=getFOVCenter(SoruFOVType)
+                    SoruFOVFrame.Position=UDim2.new(0,center.X,0,center.Y); SoruFOVFrame.Size=UDim2.new(0,SoruFOVRadius*2,0,SoruFOVRadius*2); SoruFOVFrame.Visible=true 
+                else 
+                    SoruFOVFrame.Visible=false 
+                end
                 pcall(function()
                     local lpChar = player.Character; if not lpChar then return end
                     local lpHRP = lpChar:FindFirstChild("HumanoidRootPart"); if not lpHRP then return end
@@ -2057,37 +2137,27 @@ SilentAimModule = (function()
                         local targetplayer = getClosestplayer(lpHRP)
                         if targetplayer and targetplayer.Character then
                             PlayersPosition = predicted(getHRP(targetplayer.Character))
-                        else PlayersPosition=nil end
+                        else 
+                            PlayersPosition=nil 
+                        end
                     end
                     if SilentAimNPCsEnabled then
                         local npc = getClosestNPC(lpHRP)
-                        if npc then NPCPosition = predicted(getHRP(npc))
-                        else NPCPosition=nil end
+                        if npc then 
+                            NPCPosition = predicted(getHRP(npc))
+                        else 
+                            NPCPosition=nil 
+                        end
                     end
                     if TracerEnabled and tracerBeam and tracerAttachment0 and tracerAttachment1 then
                         local targetPos = PlayersPosition or NPCPosition
-                        if lpHRP and targetPos then tracerAttachment0.WorldPosition=lpHRP.Position; tracerAttachment1.WorldPosition=targetPos; tracerBeam.Enabled=true
-                        else tracerBeam.Enabled=false end
+                        if lpHRP and targetPos then 
+                            tracerAttachment0.WorldPosition=lpHRP.Position; tracerAttachment1.WorldPosition=targetPos; tracerBeam.Enabled=true
+                        else 
+                            tracerBeam.Enabled=false 
+                        end
                     end
                 end)
-            end)
-        end
-        if not heartbeatConnection then
-            heartbeatConnection = RunService.Heartbeat:Connect(function()
-                if not ZSkillorM1 or (not SilentAimPlayersEnabled and not SilentAimNPCsEnabled) then return end
-                if currentSkillKey and isKeyCurrentlyBlacklisted(currentSkillKey) then return end
-                if currentTool and (string.find(string.lower(currentTool.Name),"portal") or string.find(string.lower(currentTool.Name),"lightning")) then return end
-                
-                if not OverrideGodhumanSanguineEnabled then return end
-                if not isOverrideTool(currentTool) then return end
-                if currentSkillKey ~= "Z" then return end
-
-                local targetPos = PlayersPosition or NPCPosition
-                if targetPos and Mouse then
-                    local targetCFrame = CFrame.new(targetPos)
-                    pcall(function() Mouse.Hit = targetCFrame; Mouse.Target = nil end)
-                    if MouseModule then pcall(function() local MouseData = require(MouseModule); MouseData.Hit = targetCFrame; MouseData.Target = nil end) end
-                end
             end)
         end
     end
@@ -2097,63 +2167,68 @@ SilentAimModule = (function()
         if heartbeatConnection then heartbeatConnection:Disconnect(); heartbeatConnection=nil end
         FOVFrame.Visible=false; SoruFOVFrame.Visible=false; destroyTracer()
         PlayersPosition = nil; NPCPosition = nil
-        if Mouse then pcall(function() Mouse.Hit = CFrame.new(0,0,0) end) end
     end
 
-    local Mouse = player:GetMouse()
-    spawn(function()
-        local mt = getrawmetatable(game); if not mt then return end
-        local oldNamecall = mt.__namecall; local oldIndex = mt.__index
-        setreadonly(mt, false)
-        mt.__namecall = newcclosure(function(self, ...)
-            local Method = getnamecallmethod(); local args = {...}
-            if args[1]=="TAP" then return oldNamecall(self, ...) end
-            local skillKey = getSkillKeyFromArgs(args)
-            if skillKey then
-                if SilentAimPlayersEnabled or SilentAimNPCsEnabled then
-                    local targetPos = PlayersPosition or NPCPosition
-                    if targetPos then
-                        task.spawn(function() faceTarget(targetPos) end)
+    local localMouse = player:GetMouse()
+    
+    if hasMetatable then
+        task.spawn(function()
+            local mt = getrawmetatable(game); if not mt then return end
+            local oldNamecall = mt.__namecall; local oldIndex = mt.__index
+            setreadonly(mt, false)
+            mt.__namecall = newcclosure(function(self, ...)
+                local Method = getnamecallmethod(); local args = {...}
+                if args[1]=="TAP" then return oldNamecall(self, ...) end
+                local skillKey = getSkillKeyFromArgs(args)
+                if skillKey then
+                    if SilentAimPlayersEnabled or SilentAimNPCsEnabled then
+                        local targetPos = PlayersPosition or NPCPosition
+                        if targetPos then
+                            task.spawn(function() faceTarget(targetPos) end)
+                        end
+                    end
+                    setCurrentSkillKey(skillKey)
+                end
+                
+                if SoruAutoAimEnabled and SoruPredictedPosition and skillKey=="C" then
+                    for i,arg in ipairs(args) do
+                        if typeof(arg)=="Vector3" then
+                            args[i]=SoruPredictedPosition
+                        end
                     end
                 end
-                setCurrentSkillKey(skillKey)
-            end
-            
-            if SoruAutoAimEnabled and SoruPredictedPosition and skillKey=="C" then
-                for i,arg in ipairs(args) do
-                    if typeof(arg)=="Vector3" then
-                        args[i]=SoruPredictedPosition
+                
+                local skip = false
+                if skillKey and isKeyCurrentlyBlacklisted(skillKey) then 
+                    skip=true
+                elseif not skillKey and currentSkillKey and isKeyCurrentlyBlacklisted(currentSkillKey) then 
+                    skip=true 
+                end
+                if not skip then
+                    if Method=="FireServer" then
+                        if typeof(args[1])=="Vector3" then
+                            if SilentAimPlayersEnabled and PlayersPosition then args[1]=PlayersPosition
+                            elseif SilentAimNPCsEnabled and NPCPosition then args[1]=NPCPosition end
+                        end
+                    elseif Method=="InvokeServer" and currentTool and currentTool.Name=="Buddy Sword" then
+                        if type(args[1])=="string" and table.find(Skills, args[1]) then
+                            if SilentAimPlayersEnabled and PlayersPosition then args[2]=PlayersPosition
+                            elseif SilentAimNPCsEnabled and NPCPosition then args[2]=NPCPosition end
+                        end
                     end
                 end
-            end
-            
-            local skip = false
-            if skillKey and isKeyCurrentlyBlacklisted(skillKey) then skip=true
-            elseif not skillKey and currentSkillKey and isKeyCurrentlyBlacklisted(currentSkillKey) then skip=true end
-            if not skip then
-                if Method=="FireServer" then
-                    if typeof(args[1])=="Vector3" then
-                        if SilentAimPlayersEnabled and PlayersPosition then args[1]=PlayersPosition
-                        elseif SilentAimNPCsEnabled and NPCPosition then args[1]=NPCPosition end
-                    end
-                elseif Method=="InvokeServer" and currentTool and currentTool.Name=="Buddy Sword" then
-                    if type(args[1])=="string" and table.find(Skills, args[1]) then
-                        if SilentAimPlayersEnabled and PlayersPosition then args[2]=PlayersPosition
-                        elseif SilentAimNPCsEnabled and NPCPosition then args[2]=NPCPosition end
-                    end
+                return oldNamecall(self, unpack(args))
+            end)
+            mt.__index = newcclosure(function(t,k)
+                if SoruAutoAimEnabled and t==localMouse and SoruPredictedPosition then
+                    if k=="Hit" then return CFrame.new(SoruPredictedPosition) end
+                    if k=="Target" then return nil end
                 end
-            end
-            return oldNamecall(self, unpack(args))
+                return oldIndex(t,k)
+            end)
+            setreadonly(mt, true)
         end)
-        mt.__index = newcclosure(function(t,k)
-            if SoruAutoAimEnabled and t==Mouse and SoruPredictedPosition then
-                if k=="Hit" then return CFrame.new(SoruPredictedPosition) end
-                if k=="Target" then return nil end
-            end
-            return oldIndex(t,k)
-        end)
-        setreadonly(mt, true)
-    end)
+    end
 
     local function onCharacterAdded(char)
         clearConnections()
@@ -2174,34 +2249,53 @@ SilentAimModule = (function()
             end))
         end
         for _,child in ipairs(char:GetChildren()) do
-            if child:IsA("Tool") then currentTool=child; currentToolCategory=getToolCategory(child); currentSkillKey=nil
-                table.insert(characterConnections, child.AncestryChanged:Connect(function(_,p) if not p then currentTool=nil end end)) end
+            if child:IsA("Tool") then 
+                currentTool=child; currentToolCategory=getToolCategory(child); currentSkillKey=nil
+                table.insert(characterConnections, child.AncestryChanged:Connect(function(_,p) if not p then currentTool=nil end end)) 
+            end
         end
         table.insert(characterConnections, char.ChildAdded:Connect(function(child)
-            if child:IsA("Tool") then currentTool=child; currentToolCategory=getToolCategory(child); currentSkillKey=nil
-                table.insert(characterConnections, child.AncestryChanged:Connect(function(_,p) if not p then currentTool=nil end end)) end
+            if child:IsA("Tool") then 
+                currentTool=child; currentToolCategory=getToolCategory(child); currentSkillKey=nil
+                table.insert(characterConnections, child.AncestryChanged:Connect(function(_,p) if not p then currentTool=nil end end)) 
+            end
         end))
         table.insert(characterConnections, char.ChildRemoved:Connect(function(child) if child==currentTool then currentTool=nil end end))
     end
     player.CharacterAdded:Connect(onCharacterAdded)
     if player.Character then onCharacterAdded(player.Character) end
 
-    local UserWantsplayerAim, UserWantsNPCAim = false, false
     function module:SetZSkillorM1(state) ZSkillorM1=state end
     function module:SetPrediction(state) PredictionEnabled=state end
     function module:SetPredictionAmount(amt) PredictionAmount=amt end
     function module:SetDistanceLimit(num) if type(num)=="number" then maxRange=num end end
-    function module:SetSelectedPlayer(playerName) if not playerName or playerName=="" then Selectedplayer=nil return end; Selectedplayer=Players:FindFirstChild(playerName) end
-    function module:SetPlayerSilentAim(state) UserWantsplayerAim=state; SilentAimPlayersEnabled=state; if state then startRenderLoop() elseif not SilentAimNPCsEnabled then stopRenderLoop() end end
-    function module:SetNPCSilentAim(state) UserWantsNPCAim=state; SilentAimNPCsEnabled=state; if state then startRenderLoop() elseif not SilentAimPlayersEnabled then stopRenderLoop() end end
-    function module:SetBlacklistKey(cat,key,state) if BlacklistedKeys[cat] and BlacklistedKeys[cat][key]~=nil then BlacklistedKeys[cat][key]=state end end
+    function module:SetSelectedPlayer(playerName) 
+        if not playerName or playerName=="" then Selectedplayer=nil return end
+        Selectedplayer=Players:FindFirstChild(playerName) 
+    end
+    function module:SetPlayerSilentAim(state) 
+        SilentAimPlayersEnabled=state
+        if state then startRenderLoop() 
+        elseif not SilentAimNPCsEnabled then stopRenderLoop() end 
+    end
+    function module:SetNPCSilentAim(state) 
+        SilentAimNPCsEnabled=state
+        if state then startRenderLoop() 
+        elseif not SilentAimPlayersEnabled then stopRenderLoop() end 
+    end
+    function module:SetBlacklistKey(cat,key,state) 
+        if BlacklistedKeys[cat] and BlacklistedKeys[cat][key]~=nil then BlacklistedKeys[cat][key]=state end 
+    end
     function module:IsKeyBlacklisted(cat,key) return BlacklistedKeys[cat] and BlacklistedKeys[cat][key] or false end
     function module:SetAimMode(mode) AimMode=mode end
     function module:SetTargetPriority(prio) TargetPriority=prio end
     function module:SetShowFOVCircle(state) ShowFOVCircle=state end
     function module:SetFOVRadius(num) FOVRadius=num end
     function module:SetFOVMode(mode) FOVMode=mode end
-    function module:SetSoruAutoAim(state) SoruAutoAimEnabled=state; if not state then SoruCurrentTarget=nil; SoruPredictedPosition=nil end end
+    function module:SetSoruAutoAim(state) 
+        SoruAutoAimEnabled=state
+        if not state then SoruCurrentTarget=nil; SoruPredictedPosition=nil end 
+    end
     function module:SetSoruRange(r) SoruAutoAimRange=r end
     function module:SetSoruAimMode(mode) SoruTargetingMode=mode end
     function module:SetSoruFOVType(mode) SoruFOVType=mode end
@@ -2212,7 +2306,7 @@ SilentAimModule = (function()
     return module
 end)()
 
--- ==================== ONGLETS ====================
+-- ==================== TABS SETUP ====================
 
 -- Macro
 local MacroTab = Tabs.Macro
@@ -2299,7 +2393,7 @@ SpeedGroup:AddSlider("SpeedHackValue", { Text="Speed Value", Default=50, Min=16,
 
 local FlyGroup = MoveTab:AddRightGroupbox("Fly")
 FlyGroup:AddToggle("FlyToggle", { Text="Toggle Fly", Default=false, Callback=function(v) if v then StartFly(); CreateFlyMiniToggle() else StopFly(); DestroyFlyMiniToggle() end; flySettings.flyActive=v end })
-FlyGroup:AddDropdown("FlyMode", { Values={"CFrame","Velocity","Swim","TP-Fast","Float","Tween"}, Default="CFrame", Text="Mode", Callback=function(v) flySettings.mode=v; if flySettings.flyActive then StopFly(); StartFly() end end })
+FlyGroup:AddDropdown("FlyMode", { Values={"CFrame","Velocity"}, Default="CFrame", Text="Mode", Callback=function(v) flySettings.mode=v; if flySettings.flyActive then StopFly(); StartFly() end end })
 FlyGroup:AddSlider("FlySpeed", { Text="Speed", Default=50, Min=10, Max=500, Rounding=0, Callback=function(v) flySettings.speed=v end })
 FlyGroup:AddToggle("NoClipToggle", { Text="NoClip", Default=false, Callback=function(v) flySettings.noclipActive=v; if v then StartNoClip() else StopNoClip() end end })
 
@@ -2467,7 +2561,8 @@ end
 
 -- Settings
 local function closeTheScript()
-    _G.TommyLoaded = false    _G.TommyAuthToken = nil
+    _G.TommyLoaded = false
+    _G.TommyAuthToken = nil
     _G.TommyScriptBasiqueRunning = nil
     _G.TommyAHKRunning = nil
     _G.TommyComboRunning = nil
@@ -2537,3 +2632,5 @@ local function onChatted(msg)
 end
 
 lp.Chatted:Connect(onChatted)
+
+Library:Notify({ Title = "Tommy Script", Description = "Loaded successfully!", Time = 5 })
