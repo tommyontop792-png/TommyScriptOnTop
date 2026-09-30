@@ -1,6 +1,6 @@
 -- ============================================================
 -- 👑 TOMMY SCRIPT - BLOX FRUITS PVP
--- Interfaz custom + Key System + Glitches + Visuals
+-- Interfaz custom + Key System + Glitches + Visuals + Dragon Gun + Anti Lava + Metamethods
 -- ============================================================
 
 local Players = game:GetService("Players")
@@ -36,7 +36,7 @@ local CONFIG = {
 -- KEY SYSTEM
 -- ============================================================
 local KEY_FILE = "tommy_key.json"
-local KEY_DURATION = 86400 -- 24 horas
+local KEY_DURATION = 86400
 local VALID_KEYS = {
     ["TOMMY-VIP"]     = true,
     ["TOMMY-TEST"]    = true,
@@ -193,6 +193,164 @@ end)
 local RS = ReplicatedStorage
 
 -- ============================================================
+-- DRAGON GUN M1 FAST ATTACK
+-- ============================================================
+local DragonModules, DragonNet, ShootGunEvent, Validator2
+task.spawn(function()
+    pcall(function()
+        DragonModules = ReplicatedStorage:WaitForChild("Modules", 3)
+        if DragonModules then
+            DragonNet = DragonModules:WaitForChild("Net", 3)
+            if DragonNet then
+                ShootGunEvent = DragonNet:WaitForChild("RE/ShootGunEvent", 3)
+            end
+        end
+        local remotes = ReplicatedStorage:WaitForChild("Remotes", 3)
+        if remotes then
+            Validator2 = remotes:WaitForChild("Validator2", 3)
+        end
+    end)
+end)
+
+local getupval = debug.getupvalue or getupvalue
+local setupval = debug.setupvalue or setupvalue
+local getupvals = debug.getupvalues or getupvalues
+
+local ShootFunction
+local V_Idx = { v26 = 12, v22 = 13, v25 = 14, v21 = 15, v23 = 16, v24 = 17, v27 = 18 }
+
+function InitDragonGun()
+    local success, result = pcall(require, ReplicatedStorage:WaitForChild("Controllers"):WaitForChild("CombatController"))
+    if success and type(result) == "table" and result.Attack then
+        ShootFunction = getupval(result.Attack, 9)
+    end
+end
+
+function GetNextValidator()
+    if not ShootFunction then InitDragonGun() end
+    if not ShootFunction then return 0, 0 end
+    local upvals = getupvals(ShootFunction)
+    if not upvals then return 0, 0 end
+    if upvals[V_Idx.v21] ~= 727595 then
+        for i, v in pairs(upvals) do
+            if v == 727595 then
+                local offset = i - 15
+                V_Idx.v21 = i; V_Idx.v22 = 13 + offset; V_Idx.v23 = 16 + offset
+                V_Idx.v24 = 17 + offset; V_Idx.v26 = 12 + offset; V_Idx.v25 = 14 + offset
+                V_Idx.v27 = 18 + offset
+                break
+            end
+        end
+    end
+    local v1 = getupval(ShootFunction, V_Idx.v21)
+    local v2 = getupval(ShootFunction, V_Idx.v22)
+    local v3 = getupval(ShootFunction, V_Idx.v23)
+    local v4 = getupval(ShootFunction, V_Idx.v24)
+    local v5 = getupval(ShootFunction, V_Idx.v25)
+    local v6 = getupval(ShootFunction, V_Idx.v26)
+    local v7 = getupval(ShootFunction, V_Idx.v27)
+    if not (v1 and v2 and v3 and v4 and v5 and v6 and v7) then return 0, 0 end
+    local v8 = v6 * v2
+    local v9 = (v5 * v2 + v6 * v1) % v3
+    v9 = (v9 * v3 + v8) % v4
+    v5 = math.floor(v9 / v3)
+    v6 = v9 - v5 * v3
+    v7 = v7 + 1
+    setupval(ShootFunction, V_Idx.v25, v5)
+    setupval(ShootFunction, V_Idx.v26, v6)
+    setupval(ShootFunction, V_Idx.v27, v7)
+    return math.floor(v9 / v4 * 16777215), v7
+end
+
+function GetClosestDragonTarget()
+    local char = player.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not root then return nil end
+    local closest, dist = nil, math.huge
+    local myPos = root.Position
+
+    if _G.TommySilentNPCs then
+        local enemies = workspace:FindFirstChild("Enemies")
+        if enemies then
+            for _, enemy in pairs(enemies:GetChildren()) do
+                local hum = enemy:FindFirstChildOfClass("Humanoid")
+                local r = enemy:FindFirstChild("HumanoidRootPart")
+                if hum and hum.Health > 0 and r then
+                    local d = (r.Position - myPos).Magnitude
+                    if d < dist then dist = d; closest = r end
+                end
+            end
+        end
+    end
+
+    if _G.TommySilentPlayers then
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= player and p.Character then
+                local hum = p.Character:FindFirstChildOfClass("Humanoid")
+                local r = p.Character:FindFirstChild("HumanoidRootPart")
+                if hum and hum.Health > 0 and r then
+                    local d = (r.Position - myPos).Magnitude
+                    if d < dist then dist = d; closest = r end
+                end
+            end
+        end
+    end
+    return closest
+end
+
+task.spawn(function()
+    while true do
+        task.wait(0.085)
+        if _G.TommyDragonGunM1 then
+            pcall(function()
+                local char = player.Character
+                local tool = char and char:FindFirstChildOfClass("Tool")
+                if not tool or tool.ToolTip ~= "Gun" then return end
+                local target = GetClosestDragonTarget()
+                if not target then return end
+                local code, count = GetNextValidator()
+                if code ~= 0 and Validator2 then Validator2:FireServer(code, count) end
+                tool:SetAttribute("LocalOverheat", 0)
+                tool:SetAttribute("LocalTotalShots", (tool:GetAttribute("LocalTotalShots") or 0) + 1)
+                if ShootGunEvent then ShootGunEvent:FireServer(target.Position, { target }) end
+            end)
+        end
+    end
+end)
+
+function UpdateDragonButton()
+end
+
+-- ============================================================
+-- ANTI LAVA
+-- ============================================================
+antiLavaActive = false
+antiLavaConnection = nil
+
+function startAntiLava()
+    if antiLavaConnection then antiLavaConnection:Disconnect() end
+    local antiLavaTimer = 0
+    antiLavaConnection = RunService.Stepped:Connect(function(_, dt)
+        antiLavaTimer = antiLavaTimer + dt
+        if antiLavaTimer < 0.2 then return end
+        antiLavaTimer = 0
+        local char = player.Character
+        if not (char and antiLavaActive) then return end
+        for _, part in pairs(char:GetDescendants()) do
+            if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart"
+            and part.Name ~= "Torso" and part.Name ~= "UpperTorso"
+            and part.Name ~= "LowerTorso" and part.Name ~= "Head" then
+                part.CanTouch = false
+            end
+        end
+    end)
+end
+
+function stopAntiLava()
+    if antiLavaConnection then antiLavaConnection:Disconnect(); antiLavaConnection = nil end
+end
+
+-- ============================================================
 -- AHK LOADERS
 -- ============================================================
 local function UnloadAHKsoru()
@@ -263,7 +421,7 @@ task.spawn(function()
 end)
 
 -- ============================================================
--- GLITCHES - BOOSTS ARREGLADOS
+-- GLITCHES - BOOSTS
 -- ============================================================
 _G.TommyMultiEnabled = false
 _G.TommyMultiPower = 400
@@ -285,6 +443,8 @@ _G.TommyDTalonDuration = 0.9
 _G.TommyDTalonCharge = 1.0
 _G.TommyDTalonCharging = false
 _G.TommyDTalonChargeStart = 0
+
+_G.TommyDragonGunM1 = false
 
 local function createLinearBoost(power, duration)
     local char = lp.Character
@@ -310,7 +470,6 @@ local function createLinearBoost(power, duration)
     end)
 end
 
--- Sanguine watcher
 RunService.Heartbeat:Connect(function()
     if not _G.TommyMultiEnabled then return end
     local char = lp.Character
@@ -340,7 +499,6 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- Diamond watcher
 RunService.Heartbeat:Connect(function()
     if not _G.TommyDiamondEnabled then return end
     local char = lp.Character
@@ -370,7 +528,6 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- DTalon watcher
 RunService.Heartbeat:Connect(function()
     if not _G.TommyDTalonEnabled then return end
     local char = lp.Character
@@ -647,7 +804,6 @@ end)
 -- MISC
 -- ============================================================
 _G.TommyAntiVoid = true
-_G.TommyAntiLava = false
 _G.TommyInfiniteZoom = false
 _G.TommyWalkOnWater = false
 _G.TommyDeleteShip = false
@@ -665,17 +821,6 @@ task.spawn(function()
     end
 end)
 
-RunService.Stepped:Connect(function()
-    if _G.TommyAntiLava and lp.Character then
-        for _, part in pairs(lp.Character:GetDescendants()) do
-            if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" and part.Name ~= "Head" then
-                part.CanTouch = false
-            end
-        end
-    end
-end)
-
--- Walk on water
 local waterPart = nil
 task.spawn(function()
     while true do
@@ -703,7 +848,6 @@ task.spawn(function()
     end
 end)
 
--- Delete ship
 task.spawn(function()
     while true do
         task.wait(3)
@@ -726,7 +870,6 @@ task.spawn(function()
     end
 end)
 
--- No GFX
 local noGfxModified = {}
 local noGfxConn = nil
 
@@ -867,27 +1010,28 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ============================================================
--- SILENT AIM (básico)
+-- SILENT AIM
 -- ============================================================
 _G.TommySilentPlayers = false
 _G.TommySilentNPCs = false
 _G.TommySilentFOV = 150
 _G.TommySilentShowFOV = false
 
-local FOVCircle = nil
-pcall(function()
-    if Drawing and Drawing.new then
-        FOVCircle = Drawing.new("Circle")
-        FOVCircle.Visible = false
-        FOVCircle.Color = CONFIG.Accent
-        FOVCircle.Radius = _G.TommySilentFOV
-        FOVCircle.Thickness = 2
-        FOVCircle.Filled = false
-    end
-end)
-
-local currentSilentTarget = nil
+-- Variables para Metamethods
+local currentSilentAimTarget = nil
 local currentSilentPart = nil
+local SoruAimbotEnabled = false
+local SelectedSoruTarget = "Nearest"
+local soruMaxDist = 3500
+
+-- Funciones auxiliares para los hooks
+local function IsCurrentToolAimbotAllowed()
+    return true
+end
+
+local function IsCurrentSlotAimbotAllowed(explicitSkillKey)
+    return true
+end
 
 local function getClosestPlayer(maxDist)
     maxDist = maxDist or 3500
@@ -907,33 +1051,216 @@ local function getClosestPlayer(maxDist)
     return closest
 end
 
+-- ============================================================
+-- METAMETHODS (Silent Aim + Soru Aimbot) - PATRÓN AHK MOBILE
+-- ============================================================
+local oldIndex = nil
+local oldNamecall = nil
+
 if hookmetamethod then
-    local oldIndex
     pcall(function()
         oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, key)
             if not checkcaller() then
                 if self == mouse and (key == "Hit" or key == "Target") then
-                    if (_G.TommySilentPlayers or _G.TommySilentNPCs) and currentSilentPart then
-                        if key == "Hit" then return CFrame.new(currentSilentPart.Position) end
-                        if key == "Target" then return currentSilentPart end
+                    if SoruAimbotEnabled then
+                        local targetName = SelectedSoruTarget
+                        if targetName == "Nearest" then
+                            local cl = getClosestPlayer(soruMaxDist)
+                            local p  = cl and Players:GetPlayerFromCharacter(cl)
+                            targetName = p and p.Name or nil
+                        end
+                        if targetName then
+                            local tObj = Players:FindFirstChild(targetName)
+                            local eHRP = tObj and tObj.Character and tObj.Character:FindFirstChild("HumanoidRootPart")
+                            if eHRP then
+                                local myHRP = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                                if myHRP and (myHRP.Position - eHRP.Position).Magnitude <= (soruMaxDist or 3500) then
+                                    if key == "Hit"    then return CFrame.new(eHRP.Position) end
+                                    if key == "Target" then return eHRP end
+                                end
+                            end
+                        end
+                    end
+
+                    if _G.TommySilentPlayers and currentSilentAimTarget and IsCurrentToolAimbotAllowed() and IsCurrentSlotAimbotAllowed() then
+                        if key == "Hit"    then return CFrame.new(currentSilentAimTarget.Position) end
+                        if key == "Target" then return currentSilentAimTarget end
                     end
                 end
             end
             return oldIndex(self, key)
         end))
     end)
+
+    pcall(function()
+        oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+            local args = {...}
+            local ncm = getnamecallmethod and getnamecallmethod()
+            local method = ncm and tostring(ncm):lower() or ""
+
+            if not checkcaller() then
+                if (method == "fireserver" or method == "invokeserver") then
+                    local calledSkill = nil
+                    for _, arg in ipairs(args) do
+                        if typeof(arg) == "string" then
+                            local sUpper = string.upper(arg)
+                            if sUpper == "Z" or sUpper == "X" or sUpper == "C" or sUpper == "V" or sUpper == "F" then
+                                calledSkill = sUpper
+                                break
+                            end
+                        end
+                    end
+
+                    if _G.TommySilentPlayers and currentSilentAimTarget and IsCurrentToolAimbotAllowed() and IsCurrentSlotAimbotAllowed(calledSkill) then
+                        local activePos = currentSilentAimTarget.Position
+
+                        if self.Name == "RE/RegisterHit" or self.Name == "RegisterHit" or self.Name:find("RegisterHit") then
+                            local targetChar = currentSilentAimTarget.Parent
+                            local targetHead = targetChar and (targetChar:FindFirstChild("Head") or targetChar:FindFirstChild("HumanoidRootPart")) or currentSilentAimTarget
+                            if targetHead and targetChar then
+                                args[1] = targetHead
+                                args[2] = { { targetChar, targetHead } }
+                                return oldNamecall(self, unpack(args))
+                            end
+                        end
+
+                        if self.Name == "RE/ShootGunEvent" or self.Name == "ShootGunEvent" or self.Name:find("ShootGunEvent") then
+                            args[1] = activePos
+                            if currentSilentAimTarget.Parent then
+                                args[2] = { currentSilentAimTarget.Parent }
+                            end
+                            return oldNamecall(self, unpack(args))
+                        end
+
+                        for i, arg in ipairs(args) do
+                            if typeof(arg) == "Vector3" then 
+                                args[i] = activePos
+                            elseif typeof(arg) == "CFrame" then 
+                                args[i] = CFrame.new(activePos)
+                            end
+                        end
+                        return oldNamecall(self, unpack(args))
+                    end
+                elseif (method == "raycast" or method == "findpartonray" or method == "findpartonraywithignorelist" or method == "findpartonraywithwhitelist") then
+                    if _G.TommySilentPlayers and currentSilentAimTarget and IsCurrentToolAimbotAllowed() and IsCurrentSlotAimbotAllowed() then
+                        if method == "raycast" then
+                            return {
+                                Instance = currentSilentAimTarget,
+                                Position = currentSilentAimTarget.Position,
+                                Hit = currentSilentAimTarget.Position,
+                                Normal = Vector3.new(0, 1, 0),
+                                Material = Enum.Material.SmoothPlastic
+                            }
+                        else
+                            return currentSilentAimTarget, currentSilentAimTarget.Position, Vector3.new(0, 1, 0), Enum.Material.SmoothPlastic
+                        end
+                    end
+                end
+            end
+
+            return oldNamecall(self, ...)
+        end))
+    end)
+else
+    pcall(function()
+        local mt = getrawmetatable and getrawmetatable(game)
+        if mt then
+            oldIndex = mt.__index
+            oldNamecall = mt.__namecall
+            if setreadonly then pcall(setreadonly, mt, false) end
+
+            mt.__index = newcclosure(function(self, key)
+                if not checkcaller() and self == mouse and (key == "Hit" or key == "Target") then
+                    if _G.TommySilentPlayers and currentSilentAimTarget and IsCurrentToolAimbotAllowed() and IsCurrentSlotAimbotAllowed() then
+                        if key == "Hit"    then return CFrame.new(currentSilentAimTarget.Position) end
+                        if key == "Target" then return currentSilentAimTarget end
+                    end
+                end
+                return oldIndex(self, key)
+            end)
+
+            mt.__namecall = newcclosure(function(self, ...)
+                local args = {...}
+                local ncm = getnamecallmethod and getnamecallmethod()
+                local method = ncm and tostring(ncm):lower() or ""
+
+                if not checkcaller() and (method == "fireserver" or method == "invokeserver") then
+                    local calledSkill = nil
+                    for _, arg in ipairs(args) do
+                        if typeof(arg) == "string" then
+                            local sUpper = string.upper(arg)
+                            if sUpper == "Z" or sUpper == "X" or sUpper == "C" or sUpper == "V" or sUpper == "F" then
+                                calledSkill = sUpper
+                                break
+                            end
+                        end
+                    end
+
+                    if _G.TommySilentPlayers and currentSilentAimTarget and IsCurrentToolAimbotAllowed() and IsCurrentSlotAimbotAllowed(calledSkill) then
+                        local activePos = currentSilentAimTarget.Position
+
+                        if self.Name == "RE/RegisterHit" or self.Name == "RegisterHit" or self.Name:find("RegisterHit") then
+                            local targetChar = currentSilentAimTarget.Parent
+                            local targetHead = targetChar and (targetChar:FindFirstChild("Head") or targetChar:FindFirstChild("HumanoidRootPart")) or currentSilentAimTarget
+                            if targetHead and targetChar then
+                                args[1] = targetHead
+                                args[2] = { { targetChar, targetHead } }
+                                return oldNamecall(self, unpack(args))
+                            end
+                        end
+
+                        if self.Name == "RE/ShootGunEvent" or self.Name == "ShootGunEvent" or self.Name:find("ShootGunEvent") then
+                            args[1] = activePos
+                            if currentSilentAimTarget.Parent then
+                                args[2] = { currentSilentAimTarget.Parent }
+                            end
+                            return oldNamecall(self, unpack(args))
+                        end
+
+                        for i, arg in ipairs(args) do
+                            if typeof(arg) == "Vector3" then 
+                                args[i] = activePos
+                            elseif typeof(arg) == "CFrame" then 
+                                args[i] = CFrame.new(activePos)
+                            end
+                        end
+                        return oldNamecall(self, unpack(args))
+                    end
+                end
+
+                return oldNamecall(self, ...)
+            end)
+            if setreadonly then pcall(setreadonly, mt, true) end
+        end
+    end)
 end
+
+-- FOV Circle
+local FOVCircle = nil
+pcall(function()
+    if Drawing and Drawing.new then
+        FOVCircle = Drawing.new("Circle")
+        FOVCircle.Visible = false
+        FOVCircle.Color = CONFIG.Accent
+        FOVCircle.Radius = _G.TommySilentFOV
+        FOVCircle.Thickness = 2
+        FOVCircle.Filled = false
+    end
+end)
 
 RunService.RenderStepped:Connect(function()
     if _G.TommySilentPlayers then
         local target = getClosestPlayer(_G.TommySilentFOV)
         if target and target.Character then
-            currentSilentTarget = target
             currentSilentPart = target.Character:FindFirstChild("Head")
+            currentSilentAimTarget = currentSilentPart
         else
-            currentSilentTarget = nil
             currentSilentPart = nil
+            currentSilentAimTarget = nil
         end
+    else
+        currentSilentPart = nil
+        currentSilentAimTarget = nil
     end
     
     if FOVCircle then
@@ -1026,7 +1353,6 @@ local function buildHub()
     }, topBar)
     corner(8, minBtn)
 
-    -- Sidebar con UIListLayout para alineación perfecta
     local sidebar = new("Frame", {
         Size = UDim2.new(0, 165, 1, -44), Position = UDim2.new(0, 0, 0, 44),
         BackgroundColor3 = CONFIG.BG, BorderSizePixel = 0,
@@ -1209,13 +1535,19 @@ local function buildHub()
 
     -- ============ SILENT AIM ============
     local silentPage = pages["Silent Aim"]
-    local sc1 = createCard(silentPage, "SILENT AIM", 130)
+    local sc1 = createCard(silentPage, "SILENT AIM", 160)
     createToggle(sc1, 34, "Player Silent Aim", false, function(v) _G.TommySilentPlayers = v end)
     createToggle(sc1, 62, "NPC Silent Aim", false, function(v) _G.TommySilentNPCs = v end)
     createToggle(sc1, 90, "Show FOV Circle", false, function(v) _G.TommySilentShowFOV = v end)
-    
+    createToggle(sc1, 118, "Dragon Gun M1 (Fast Attack)", false, function(v) _G.TommyDragonGunM1 = v end)
+
     local sc2 = createCard(silentPage, "FOV SETTINGS", 90)
     createSlider(sc2, 34, "FOV Radius", 50, 800, 150, function(v) _G.TommySilentFOV = v end)
+
+    local sc3 = createCard(silentPage, "SORU AIMBOT (TP)", 130)
+    createToggle(sc3, 34, "Soru Aimbot Enabled", false, function(v) SoruAimbotEnabled = v end)
+    createDropdown(sc3, 62, "Target", {"Nearest"}, "Nearest", function(v) SelectedSoruTarget = v end)
+    createSlider(sc3, 94, "Max Dist", 100, 5000, 3500, function(v) soruMaxDist = v end)
 
     -- ============ GLITCH ============
     local glitchPage = pages["Glitch"]
@@ -1314,7 +1646,10 @@ local function buildHub()
     local miscPage = pages["Misc"]
     local mm1 = createCard(miscPage, "PROTECTION", 130)
     createToggle(mm1, 34, "Anti Void", true, function(v) _G.TommyAntiVoid = v end)
-    createToggle(mm1, 62, "Anti Lava", false, function(v) _G.TommyAntiLava = v end)
+    createToggle(mm1, 62, "Anti Lava", false, function(v)
+        antiLavaActive = v
+        if v then startAntiLava() else stopAntiLava() end
+    end)
     createToggle(mm1, 90, "Infinite Zoom", false, function(v) _G.TommyInfiniteZoom = v end)
 
     local mm2 = createCard(miscPage, "WORLD", 130)
@@ -1362,4 +1697,4 @@ else
     end)
 end
 
-print("✅ TOMMY SCRIPT cargado - Key System + Glitches + Visuals arreglados")
+print("✅ TOMMY SCRIPT cargado - Dragon Gun + Anti Lava + Metamethods")
