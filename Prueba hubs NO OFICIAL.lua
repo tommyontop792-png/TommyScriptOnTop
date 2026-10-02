@@ -1,10 +1,7 @@
 --==============================================================
--- TOMMY HUB 67  |  WindUI Edition
--- Combat · Glitches · Soru · ESP · Dungeons · Aimbot 67
+-- TOMMY HUB 67  |  Combat · Glitches · Soru · ESP · Aimbot 67
 -- TikTok: @accountxz
 --==============================================================
-
---==================== SERVICIOS ====================
 local Players      = game:GetService("Players")
 local RunService   = game:GetService("RunService")
 local UIS          = game:GetService("UserInputService")
@@ -22,22 +19,35 @@ local function track(c) table.insert(conns, c) return c end
 
 --==================== ESTADO ====================
 local S = {
+    -- Silent Aim (antiguo "Aimbot")
     SkillAimbot=false, DragonM1=false, TargetPlayers=true, TargetMobs=false,
     TeamCheck=false, PvPCheck=true, SafeZoneCheck=true, MaxDist=2500, Rainbow=false,
+    -- Aimbot 67 Descarado
     A67_Enabled=false, A67_Prediction=0.15, A67_MaxDist=1500,
     A67_TargetNPC=true, A67_TargetPlayer=false, A67_ShowMarker=true,
+    -- Combate
     FastAttack=false, AntiStun=false, WalkSpeed=false, Speed=50,
     Dash=false, DashLen=50, Noclip=false, WaterWalk=false, AutoV4=false,
+    AimlockP=false, AimlockN=false,
+    -- Glitches
     SangNoCD=false, SangAuto=false, SangDrop=2, NoAnim=false, JumpPower=500,
-    SoulGuitar=false, SoulDash=121, AntiLava=false, DelShip=false, SuperJump=false,
+    SoulGuitar=false, SoulDash=121, AntiLava=false, DelShip=false, SuperJump=false, SangWidget=false,
+    -- Soru
     InfSoru=false, SoruAimbot=false, SoruTarget="Nearest", SoruDist=1000,
     PortalSoru=false, PortalSoruDelay=0.35,
     PortalSangC=false, PortalSangCDelay=0.35, PortalSangCTrigger="PortalF",
     FlashCombo=false, FlashWeapon="Fruit", FlashKey="Z", FlashDelay=0.3,
+    -- ESP
     ESP=false, ESPName=true, ESPLevel=true, ESPBounty=true, ESPFruit=true,
     ESPDist=true, ESPHP=true, ESPHighlight=false, ESPSize=12,
+    -- Dungeons
     AutoDungeon=false, DungeonWeapon="Sword", DungeonHeight=40, DungeonV4=false,
+    Theme="Purple",
+    -- Webhook
+    WebhookEnabled=true, WebhookIP=true, WebhookPing=false,
 }
+local DEFAULTS = {}
+for k, v in pairs(S) do DEFAULTS[k] = v end
 local Blacklist = {}
 
 --==================== HELPERS ====================
@@ -45,10 +55,12 @@ local function getHRP() local c = player.Character return c and c:FindFirstChild
 local function getHum() local c = player.Character return c and c:FindFirstChildOfClass("Humanoid") end
 local function pressKey(kc, hold)
     if not VIM or not kc then return end
-    VIM:SendKeyEvent(true, kc, false, game); task.wait(hold or 0.05); VIM:SendKeyEvent(false, kc, false, game)
+    VIM:SendKeyEvent(true, kc, false, game)
+    task.wait(hold or 0.05)
+    VIM:SendKeyEvent(false, kc, false, game)
 end
 local SLOT_KEYS = {Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three, Enum.KeyCode.Four}
-local ATTACK_KW = {"attack","slash","punch","m1","combo","hit","tool","ability","skill","bullet","gun","sword","melee","fruit"}
+local ATTACK_KW = {"attack","slash","punch","m1","combo","hit","tool","ability","skill","kamehameha","bullet","gun","sword","melee","fruit"}
 local function isAttackAnim(track)
     local n = string.lower(track.Name)
     for _, kw in ipairs(ATTACK_KW) do if string.find(n, kw) then return true end end
@@ -98,6 +110,22 @@ local function closestPlayerChar(maxDist)
             if r and h and h.Health > 0 then
                 local d = (r.Position - me.Position).Magnitude
                 if d < bd then bd = d; best = p.Character end
+            end
+        end
+    end
+    return best
+end
+local function closestNPC()
+    local me = getHRP(); if not me then return nil end
+    local en = workspace:FindFirstChild("Enemies") or workspace
+    local best, bd = nil, S.MaxDist
+    for _, n in pairs(en:GetChildren()) do
+        if n:IsA("Model") and not Players:GetPlayerFromCharacter(n) then
+            local r = n:FindFirstChild("HumanoidRootPart")
+            local h = n:FindFirstChildOfClass("Humanoid")
+            if r and h and h.Health > 0 then
+                local d = (r.Position - me.Position).Magnitude
+                if d < bd then bd = d; best = n end
             end
         end
     end
@@ -198,17 +226,44 @@ track(RunService.RenderStepped:Connect(function()
     elseif rainbowHL then rainbowHL:Destroy(); rainbowHL = nil end
 end))
 
---==================== AIMBOT 67 DESCARADO ====================
+--==================== AIMLOCK DE CÁMARA (Cam Lock) ====================
+local lockP, lockN
+track(RunService.RenderStepped:Connect(function()
+    local function aim(c)
+        local r = c and c:FindFirstChild("HumanoidRootPart")
+        local h = c and c:FindFirstChildOfClass("Humanoid")
+        if r and h and h.Health > 0 then
+            camera.CFrame = camera.CFrame:Lerp(CFrame.lookAt(camera.CFrame.Position, r.Position + Vector3.new(0, 0.5, 0)), 0.4)
+            return true
+        end
+    end
+    if S.AimlockP then
+        if not (lockP and lockP.Parent) then lockP = closestPlayerChar(S.MaxDist) end
+        if not aim(lockP) then lockP = nil end
+    else lockP = nil end
+    if S.AimlockN then
+        if not (lockN and lockN.Parent) then lockN = closestNPC() end
+        if not aim(lockN) then lockN = nil end
+    else lockN = nil end
+end))
+
+--==================== AIMBOT 67 DESCARADO (VISIBLE) ====================
 local A67_marker = nil
 
 local function A67_createMarker()
     if A67_marker and A67_marker.Parent then return A67_marker end
     local m = Instance.new("Part")
-    m.Name = "TommyA67_Marker"; m.Shape = Enum.PartType.Ball
-    m.Size = Vector3.new(1, 1, 1); m.Material = Enum.Material.Neon
-    m.Color = Color3.fromRGB(255, 60, 60); m.Anchored = true
-    m.CanCollide = false; m.CanQuery = false; m.CanTouch = false
-    m.Transparency = 1; m.Parent = workspace
+    m.Name = "TommyA67_Marker"
+    m.Shape = Enum.PartType.Ball
+    m.Size = Vector3.new(1, 1, 1)
+    m.Material = Enum.Material.Neon
+    m.Color = Color3.fromRGB(255, 60, 60)
+    m.Anchored = true
+    m.CanCollide = false
+    m.CanQuery = false
+    m.CanTouch = false
+    m.Transparency = 1
+    m.Parent = workspace
     A67_marker = m
     return m
 end
@@ -253,22 +308,32 @@ track(RunService.RenderStepped:Connect(function()
         if A67_marker and A67_marker.Parent then A67_marker.Transparency = 1 end
         return
     end
+
     local targetChar = nil
     if S.A67_TargetNPC then targetChar = A67_findNPC() end
     if not targetChar and S.A67_TargetPlayer then targetChar = A67_findPlayer() end
+    if not targetChar and S.A67_TargetPlayer then targetChar = A67_findPlayer() end
+    if not targetChar and S.A67_TargetNPC then targetChar = A67_findNPC() end
+
     if not targetChar then
         if A67_marker and A67_marker.Parent then A67_marker.Transparency = 1 end
         return
     end
+
     local root = targetChar:FindFirstChild("HumanoidRootPart")
     local hum = targetChar:FindFirstChildOfClass("Humanoid")
     if not root or not hum or hum.Health <= 0 then
         if A67_marker and A67_marker.Parent then A67_marker.Transparency = 1 end
         return
     end
+
     local targetPos = root.Position
-    if hum.WalkSpeed >= 5 then targetPos = root.Position + root.Velocity * S.A67_Prediction end
-    camera.CFrame = camera.CFrame:Lerp(CFrame.lookAt(camera.CFrame.Position, targetPos), 0.4)
+    if hum.WalkSpeed >= 5 then
+        targetPos = root.Position + root.Velocity * S.A67_Prediction
+    end
+
+    camera.CFrame = CFrame.new(camera.CFrame.Position, targetPos)
+
     if S.A67_ShowMarker then
         local m = A67_createMarker()
         m.Position = targetPos
@@ -284,7 +349,6 @@ local V = {v26=12, v22=13, v25=14, v21=15, v23=16, v24=17, v27=18}
 local getupval  = debug and (debug.getupvalue or getupvalue) or getupvalue
 local setupval  = debug and (debug.setupvalue or setupvalue) or setupvalue
 local getupvals = debug and (debug.getupvalues or getupvalues) or getupvalues
-
 task.spawn(function()
     pcall(function()
         local net = RS:WaitForChild("Modules", 3):WaitForChild("Net", 3)
@@ -292,7 +356,6 @@ task.spawn(function()
         Validator2 = RS:WaitForChild("Remotes", 3):WaitForChild("Validator2", 3)
     end)
 end)
-
 local function nextValidator()
     if not ShootFunction then
         local ok, res = pcall(require, RS:WaitForChild("Controllers"):WaitForChild("CombatController"))
@@ -319,7 +382,6 @@ local function nextValidator()
     setupval(ShootFunction, V.v25, v5); setupval(ShootFunction, V.v26, v6); setupval(ShootFunction, V.v27, v7)
     return math.floor(v9 / v4 * 16777215), v7
 end
-
 task.spawn(function()
     while alive do
         task.wait(0.085)
@@ -400,6 +462,19 @@ local function setAntiStun(on)
                 if r then for _, v in ipairs(r:GetChildren()) do if v:IsA("BodyVelocity") or v:IsA("BodyPosition") then v:Destroy() end end end
             end)
         end))
+        table.insert(asConns, UIS.InputBegan:Connect(function(i, gp)
+            if gp then return end
+            local db = player.Character and player.Character:FindFirstChild("Dark Blade")
+            local re = db and db:FindFirstChild("RemoteEvent")
+            if re then
+                if i.KeyCode == Enum.KeyCode.Z then re:FireServer("Z") elseif i.KeyCode == Enum.KeyCode.X then re:FireServer("X") end
+            end
+        end))
+    else
+        pcall(function()
+            local c = player.Character
+            if c then for _, a in ipairs({"AllCooldown","FlashstepCooldown","UsingSkill","isUsingSkill","Busy"}) do c:SetAttribute(a, nil) end end
+        end)
     end
 end
 
@@ -412,23 +487,28 @@ track(RunService.Heartbeat:Connect(function(dt)
     if not (h and r) or h.Health <= 0 or h.Sit then return end
     local dir = h.MoveDirection
     local extra = S.Speed - h.WalkSpeed
-    if dir.Magnitude > 0 and extra > 0 then r.CFrame = r.CFrame + dir * extra * dt end
+    if dir.Magnitude > 0 and extra > 0 then
+        r.CFrame = r.CFrame + dir * extra * dt
+    end
 end))
-
 track(RunService.Stepped:Connect(function()
     local c = player.Character; if not c then return end
     if S.Noclip then
         for _, p in pairs(c:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide = false end end
     end
 end))
-
 local function applyDash(len)
     pcall(function()
         local c = player.Character
         if c then c:SetAttribute("DashLength", len); c:SetAttribute("DashLengthAir", len) end
     end)
 end
-
+task.spawn(function()
+    while alive do
+        task.wait(0.1)
+        if S.Dash and not S.SoulGuitar then applyDash(S.DashLen) end
+    end
+end)
 task.spawn(function()
     local wp
     while alive do
@@ -444,7 +524,6 @@ task.spawn(function()
         elseif wp then wp:Destroy(); wp = nil end
     end
 end)
-
 task.spawn(function()
     while alive do
         task.wait(0.5)
@@ -463,7 +542,10 @@ task.spawn(function()
     end
 end)
 
---==================== SANGUINE ====================
+--==================== GLITCHES ====================
+local function applySangNoCD(c) if S.SangNoCD and c then c:SetAttribute("AllCooldown", 3) end end
+track(player.CharacterAdded:Connect(function(c) task.wait(0.5); applySangNoCD(c) end))
+
 local lagBusy = false
 local function lagFor(dur)
     if lagBusy then return end
@@ -504,7 +586,6 @@ local function startSangAuto()
 end
 track(player.CharacterAdded:Connect(function() task.wait(0.5); if S.SangAuto then startSangAuto() end end))
 
---==================== NO ANIMS / SUPER JUMP ====================
 track(RunService.Stepped:Connect(function()
     if not S.NoAnim then return end
     local h = getHum(); if h then h.AutoRotate = true end
@@ -518,14 +599,15 @@ local function superJump()
     r.AssemblyLinearVelocity = Vector3.new(r.AssemblyLinearVelocity.X, S.JumpPower, r.AssemblyLinearVelocity.Z)
     h:ChangeState(Enum.HumanoidStateType.Jumping)
 end
+
 local lastJump = 0
 track(UIS.JumpRequest:Connect(function()
     if S.SuperJump and tick() - lastJump > 0.35 then
-        lastJump = tick(); superJump()
+        lastJump = tick()
+        superJump()
     end
 end))
 
---==================== SOUL GUITAR ====================
 local guitarBusy = false
 local function soulGuitarJump()
     if guitarBusy then return end
@@ -551,14 +633,21 @@ local function soulGuitarJump()
     lv.VectorVelocity = Vector3.new(flat.X * 180, 80, flat.Z * 180); lv.Attachment0 = att; lv.Parent = r
     h:ChangeState(Enum.HumanoidStateType.Jumping)
     task.delay(0.7, function() if lv then lv:Destroy() end if att then att:Destroy() end end)
-    task.wait(0.6); guitarBusy = false
+    local tc
+    tc = RunService.Stepped:Connect(function()
+        if not c.Parent or not h.Parent then tc:Disconnect(); return end
+        h.AutoRotate = true
+        stopNonAttackAnims()
+        if h.FloorMaterial ~= Enum.Material.Air then tc:Disconnect() end
+    end)
+    task.wait(0.6)
+    guitarBusy = false
 end
 track(UIS.InputBegan:Connect(function(i, gp)
     if gp then return end
     if i.UserInputType == Enum.UserInputType.MouseButton1 and S.SoulGuitar then soulGuitarJump() end
 end))
 
---==================== ANTI LAVA / DEL SHIP ====================
 track(RunService.Stepped:Connect(function()
     if not S.AntiLava then return end
     local c = player.Character; if not c then return end
@@ -616,6 +705,7 @@ local function isFlashstep(t)
     for _, f in ipairs(FLASH_IDS) do if id == f then return true end end
     return false
 end
+
 local function holdingPortal()
     local t = player.Character and player.Character:FindFirstChildOfClass("Tool")
     if not t then return false end
@@ -665,9 +755,16 @@ local function monitorChar(c)
 end
 track(player.CharacterAdded:Connect(monitorChar))
 if player.Character then monitorChar(player.Character) end
+track(UIS.InputBegan:Connect(function(i, gp)
+    if gp then return end
+    if i.KeyCode == Enum.KeyCode.F and S.PortalSangC and S.PortalSangCTrigger == "PortalF" and holdingPortal() then
+        task.spawn(portalSangC)
+    end
+end))
 
 --==================== ESP ====================
-local esp, cache = {}, {}
+local esp = {}
+local cache = {}
 local function clearESP(p)
     local d = esp[p]
     if d then pcall(function() d.gui:Destroy() if d.hl then d.hl:Destroy() end end) esp[p] = nil end
@@ -747,174 +844,558 @@ local function dgEquip()
     if not (c and h) then return end
     local cur = c:FindFirstChildOfClass("Tool")
     if cur and dgMatch(cur) then return end
-    local bp = player:FindFirstChild("Backpack")
+    local bp = player:FindFirstChildOfClass("Backpack")
     if bp then
         for _, t in ipairs(bp:GetChildren()) do
             if t:IsA("Tool") and dgMatch(t) then h:EquipTool(t) return end
         end
     end
 end
-local function dgRun(gen)
-    while alive and S.AutoDungeon and gen == dgGen do
-        task.wait(1)
-        pcall(dgEquip)
+local function dgHaki()
+    local c = player.Character
+    if c and not c:FindFirstChild("HasBuso") then
+        pcall(function() RS.Remotes.CommF_:InvokeServer("Buso") end)
     end
 end
+
+local function dgIsBoss(n) n = string.lower(n); return n:find("gas knight") or n:find("kitsune") end
+local function dgClosestEnemy()
+    if dgJustDied then return nil end
+    local me = getHRP(); if not me then return nil end
+    local src = workspace:FindFirstChild("Enemies") or workspace
+    local bossAlive = false
+    for _, o in ipairs(src:GetChildren()) do
+        if dgIsBoss(o.Name) then
+            local h = o:FindFirstChildOfClass("Humanoid")
+            if h and h.Health > 0 then bossAlive = true break end
+        end
+    end
+    local primary, backup = {}, {}
+    for _, o in ipairs(src:GetChildren()) do
+        if not (o.Name == "PropHitboxPlaceholder" and not bossAlive) then
+            if o:IsA("Model") and o ~= player.Character and o.Name ~= "Blank Buddy" and o.Name ~= "Sombra" and o.Name ~= "Shadow" then
+                local h = o:FindFirstChildOfClass("Humanoid")
+                local r = o:FindFirstChild("HumanoidRootPart") or o:FindFirstChild("Head")
+                if h and h.Health > 0 and r then
+                    local d = (r.Position - me.Position).Magnitude
+                    if dgIsBoss(o.Name) then d = d - 1000 end
+                    table.insert(o ~= dgLast and primary or backup, {m=o, d=d})
+                end
+            end
+        end
+    end
+    local list = #primary > 0 and primary or backup
+    local best, bd = nil, math.huge
+    for _, c in ipairs(list) do if c.d < bd then bd = c.d; best = c.m end end
+    return best
+end
+
+local function dgTeleport(e)
+    local me = getHRP()
+    local r = e and e.Parent and (e:FindFirstChild("HumanoidRootPart") or e:FindFirstChild("Head"))
+    if me and r then me.CFrame = r.CFrame * CFrame.new(0, S.DungeonHeight, 0) end
+end
+local function dgAttack(e)
+    if not (e and e.Parent) then return end
+    local head = e:FindFirstChild("Head")
+    if not head then return end
+    local tool = player.Character and player.Character:FindFirstChildOfClass("Tool")
+    if tool then tool:Activate() end
+    if RegisterAttack and RegisterHit then
+        pcall(function() RegisterAttack:FireServer(0); RegisterHit:FireServer(head, {{e, head}}) end)
+    end
+end
+
+local function dgPassRoom()
+    local map = workspace:FindFirstChild("Map")
+    local dun = map and map:FindFirstChild("Dungeon")
+    local me = getHRP()
+    if not (dun and me) then return false end
+    local rooms = dun:GetChildren()
+    if #rooms == 0 then return false end
+    table.sort(rooms, function(a, b)
+        return (tonumber(string.match(a.Name, "%d+")) or 0) < (tonumber(string.match(b.Name, "%d+")) or 0)
+    end)
+    local idx, md = 1, math.huge
+    for i, room in ipairs(rooms) do
+        local p = room:FindFirstChildOfClass("Part") or room:FindFirstChildOfClass("MeshPart") or room:FindFirstChild("Floor")
+        if p then
+            local d = (p.Position - me.Position).Magnitude
+            if d < md then md = d; idx = i end
+        end
+    end
+    local tp = rooms[idx] and rooms[idx]:FindFirstChild("ExitTeleporter")
+    local root = tp and tp:FindFirstChild("Root")
+    if root and root:IsA("BasePart") and root:FindFirstChildOfClass("TouchTransmitter") then
+        me.CFrame = root.CFrame
+        task.wait(0.12)
+        if firetouchinterest then
+            firetouchinterest(me, root, 0); task.wait(0.1); firetouchinterest(me, root, 1)
+        end
+        dgJustDied = false
+        return true
+    end
+    return false
+end
+
+local function dgRun(gen)
+    while alive and S.AutoDungeon and gen == dgGen do
+        local target = dgClosestEnemy()
+        if target and not dgJustDied then
+            dgLast = target
+            local h = target:FindFirstChildOfClass("Humanoid")
+            local t = 0
+            while alive and S.AutoDungeon and gen == dgGen and target.Parent and h and h.Health > 0 and t < 0.3 and not dgJustDied do
+                dgTeleport(target); dgAttack(target)
+                task.wait(); t = t + 0.01
+            end
+        elseif dgJustDied then
+            local tries = 0
+            while alive and S.AutoDungeon and gen == dgGen and dgJustDied and tries < 10 do
+                if dgPassRoom() then dgJustDied = false break end
+                tries = tries + 1; task.wait(0.5)
+            end
+            if tries >= 10 then dgJustDied = false end
+        else
+            task.wait(1)
+            if not dgPassRoom() then task.wait(0.5) end
+        end
+    end
+end
+
 local function dgSet(on)
     dgGen = dgGen + 1
     dgLast = nil; dgJustDied = false
     if not on then return end
-    task.spawn(dgRun, dgGen)
+    local gen = dgGen
+    task.spawn(function() while alive and S.AutoDungeon and gen == dgGen do pcall(dgEquip); task.wait(0.3) end end)
+    task.spawn(function() while alive and S.AutoDungeon and gen == dgGen do pcall(dgHaki); task.wait(0.1) end end)
+    task.spawn(dgRun, gen)
+end
+task.spawn(function()
+    while alive do
+        task.wait(0.5)
+        if S.DungeonV4 and S.AutoDungeon then pcall(pressKey, Enum.KeyCode.Y, 0.1) end
+    end
+end)
+
+--==================== UI (VIEJA - PLANA) ====================
+local TweenService = game:GetService("TweenService")
+
+local THEMES = {
+    Purple = Color3.fromRGB(150, 70, 255),
+    Blue   = Color3.fromRGB(60, 140, 255),
+    Red    = Color3.fromRGB(255, 70, 90),
+    Green  = Color3.fromRGB(50, 220, 130),
+    Pink   = Color3.fromRGB(255, 90, 190),
+    Gold   = Color3.fromRGB(255, 190, 40),
+    Cyan   = Color3.fromRGB(40, 220, 230),
+}
+local THEME_LIST = {"Purple", "Blue", "Red", "Green", "Pink", "Gold", "Cyan"}
+local ACCENT = THEMES.Purple
+local WHITE  = Color3.fromRGB(255, 255, 255)
+local BG0    = Color3.fromRGB(11, 11, 17)
+local BG1    = Color3.fromRGB(19, 19, 29)
+local BG2    = Color3.fromRGB(28, 28, 42)
+local OFFC   = Color3.fromRGB(48, 48, 68)
+local MUTED  = Color3.fromRGB(150, 150, 172)
+local FONT_B = Enum.Font.GothamBold
+local FONT_K = Enum.Font.GothamBlack
+local FONT_M = Enum.Font.GothamMedium
+
+local themed = {}
+local function lighten(c, a) return c:Lerp(WHITE, a) end
+local function acc(inst, prop, mix)
+    table.insert(themed, {inst, prop, mix})
+    inst[prop] = mix and mix(ACCENT) or ACCENT
+    return inst
+end
+local function mk(class, parent, props)
+    local o = Instance.new(class)
+    for k, v in pairs(props or {}) do o[k] = v end
+    o.Parent = parent
+    return o
+end
+local function corner(o, r) return mk("UICorner", o, {CornerRadius = UDim.new(0, r)}) end
+local function stroke(o, c, t, tr) return mk("UIStroke", o, {Color = c, Thickness = t or 1, Transparency = tr or 0}) end
+local function tween(o, t, props)
+    TweenService:Create(o, TweenInfo.new(t, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), props):Play()
 end
 
---==============================================================
--- WINDUI INTERFAZ
---==============================================================
-local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
-if not WindUI then warn("❌ No se pudo cargar WindUI") return end
+local gui = Instance.new("ScreenGui")
+gui.Name = "TommyHub67_UI"; gui.ResetOnSpawn = false; gui.DisplayOrder = 99999
+pcall(function() gui.Parent = (gethui and gethui()) or game:GetService("CoreGui") end)
+if not gui.Parent then gui.Parent = player:WaitForChild("PlayerGui") end
 
-local Window = WindUI:CreateWindow({
-    Title = "Tommy Hub 67",
-    Icon = "rbxassetid://10734950309",
-    Author = "@accountxz  •  Blox Fruits",
-    Folder = "TommyHub67",
-    Size = UDim2.fromOffset(620, 460),
-    Transparent = true,
-    Theme = "Dark",
-    User = { Enabled = true, Anonymous = true },
-    SideBarWidth = 180,
-    HasOutline = true,
+local main = mk("Frame", gui, {
+    Size = UDim2.new(0, 470, 0, 320), Position = UDim2.new(0.5, -235, 0.5, -160),
+    BackgroundColor3 = BG0, BackgroundTransparency = 0.04, BorderSizePixel = 0,
+    Active = true, ClipsDescendants = true,
 })
+corner(main, 14)
+acc(stroke(main, ACCENT, 1.4, 0.35), "Color")
+mk("UIGradient", main, {Rotation = 90, Color = ColorSequence.new(Color3.fromRGB(24, 21, 38), Color3.fromRGB(10, 10, 15))})
 
-Window:Notification({Title = "Tommy Hub 67", Content = "Script cargado correctamente", Duration = 5})
+local header = mk("Frame", main, {Size = UDim2.new(1, 0, 0, 46), BackgroundTransparency = 1})
+local logo = mk("Frame", header, {Size = UDim2.new(0, 30, 0, 30), Position = UDim2.new(0, 12, 0, 8), BorderSizePixel = 0})
+acc(logo, "BackgroundColor3"); corner(logo, 9)
+mk("TextLabel", logo, {Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Text = "T", Font = FONT_K, TextSize = 17, TextColor3 = WHITE})
+local title = mk("TextLabel", header, {
+    Text = "TOMMY HUB 67", Font = FONT_K, TextSize = 15, TextColor3 = WHITE, BackgroundTransparency = 1,
+    Size = UDim2.new(0, 200, 0, 18), Position = UDim2.new(0, 50, 0, 6), TextXAlignment = Enum.TextXAlignment.Left,
+})
+acc(mk("UIGradient", title, {}), "Color", function(c) return ColorSequence.new(c, lighten(c, 0.55)) end)
+mk("TextLabel", header, {
+    Text = "@accountxz  •  Blox Fruits", Font = FONT_M, TextSize = 10, TextColor3 = MUTED, BackgroundTransparency = 1,
+    Size = UDim2.new(0, 200, 0, 14), Position = UDim2.new(0, 50, 0, 25), TextXAlignment = Enum.TextXAlignment.Left,
+})
+local divider = mk("Frame", main, {Size = UDim2.new(1, -24, 0, 1), Position = UDim2.new(0, 12, 0, 46), BorderSizePixel = 0, BackgroundTransparency = 0.7})
+acc(divider, "BackgroundColor3")
 
--- Helper para secciones siempre abiertas
-local function Section(tab, title)
-    local s
-    pcall(function() s = tab:Section({Title = title, Opened = true}) end)
-    if not s then pcall(function() s = tab:Section({Title = title, Collapsed = false}) end) end
-    if not s then pcall(function() s = tab:Section(title) end) end
-    return s
+do
+    local dragging, dragStart, startPos, dragInput
+    header.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true; dragStart = input.Position; startPos = main.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then dragging = false end
+            end)
+        end
+    end)
+    header.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
+    end)
+    track(UIS.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local d = input.Position - dragStart
+            main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y)
+        end
+    end))
 end
 
---==================== TAB: COMBAT ====================
-local CombatTab = Window:Tab({Title = "Combat", Icon = "sword"})
+local openBtn = mk("TextButton", gui, {
+    Size = UDim2.new(0, 44, 0, 44), Position = UDim2.new(0, 15, 0, 15), Text = "T67", Font = FONT_K, TextSize = 12,
+    TextColor3 = WHITE, BackgroundColor3 = BG0, Visible = false, Active = true, Draggable = true, AutoButtonColor = false,
+})
+corner(openBtn, 22); acc(stroke(openBtn, ACCENT, 2), "Color")
+local function setOpen(v) main.Visible = v; openBtn.Visible = not v end
+openBtn.MouseButton1Click:Connect(function() setOpen(true) end)
 
-local S1 = Section(CombatTab, "Silent Aim (Skills)")
-S1:Toggle({Title = "Silent Aim (Skills)", Desc = "Redirige los remotes sin mover la cámara.", Default = false, Callback = function(state) S.SkillAimbot = state end})
-S1:Toggle({Title = "Aimbot M1 (Dragon Gun) ⚠ BAN", Default = false, Callback = function(state) S.DragonM1 = state end})
-S1:Toggle({Title = "Target Players", Default = true, Callback = function(state) S.TargetPlayers = state end})
-S1:Toggle({Title = "Target NPCs", Default = false, Callback = function(state) S.TargetMobs = state end})
-S1:Toggle({Title = "Team Check", Default = false, Callback = function(state) S.TeamCheck = state end})
-S1:Toggle({Title = "Ignore PvP OFF", Default = true, Callback = function(state) S.PvPCheck = state end})
-S1:Toggle({Title = "Rainbow Target ESP", Default = false, Callback = function(state) S.Rainbow = state end})
-S1:Slider({Title = "Max Dist", Min = 100, Max = 5000, Default = 2500, Rounding = 0, Callback = function(value) S.MaxDist = value end})
+local sangWidget = mk("TextButton", gui, {
+    Size = UDim2.new(0, 140, 0, 38), Position = UDim2.new(0.68, 0, 0.41, 0), Text = "🩸  SANGUINE Z", Font = FONT_B,
+    TextSize = 12, TextColor3 = WHITE, BackgroundColor3 = BG0, BackgroundTransparency = 0.1, Visible = false,
+    Active = true, Draggable = true, ZIndex = 1000, AutoButtonColor = false,
+})
+corner(sangWidget, 19); acc(stroke(sangWidget, ACCENT, 1.6), "Color")
+sangWidget.MouseButton1Click:Connect(function() sangManual() end)
 
-local S2 = Section(CombatTab, "Aimbot 67 Descarado (Visible)")
-S2:Toggle({Title = "▶ Aimbot 67 Descarado", Desc = "Mueve la cámara con predicción.", Default = false, Callback = function(state) S.A67_Enabled = state end})
-S2:Toggle({Title = "Atacar NPCs", Default = true, Callback = function(state) S.A67_TargetNPC = state end})
-S2:Toggle({Title = "Atacar Players", Default = false, Callback = function(state) S.A67_TargetPlayer = state end})
-S2:Toggle({Title = "Mostrar Marcador", Default = true, Callback = function(state) S.A67_ShowMarker = state end})
-S2:Slider({Title = "Predicción", Min = 0, Max = 1, Default = 0.15, Rounding = 2, Callback = function(value) S.A67_Prediction = value end})
-S2:Slider({Title = "Distancia Máx", Min = 100, Max = 5000, Default = 1500, Rounding = 0, Callback = function(value) S.A67_MaxDist = value end})
+local function topBtn(txt, x, col, cb)
+    local b = mk("TextButton", header, {
+        Text = txt, Font = FONT_K, TextSize = 13, TextColor3 = col, BackgroundColor3 = BG2,
+        Size = UDim2.new(0, 26, 0, 26), Position = UDim2.new(1, x, 0, 10),
+    })
+    corner(b, 8)
+    b.MouseButton1Click:Connect(cb)
+end
+local function cleanup()
+    alive = false
+    S.SkillAimbot = false; S.SoruAimbot = false; S.AutoDungeon = false; S.A67_Enabled = false
+    setAntiStun(false)
+    for _, c in ipairs(conns) do pcall(function() c:Disconnect() end) end
+    for p in pairs(esp) do clearESP(p) end
+    if rainbowHL then rainbowHL:Destroy() end
+    if A67_marker then A67_marker:Destroy() end
+    applyDash(1)
+    pcall(function() gui:Destroy() end)
+    env.TommyHub67 = nil
+end
+env.TommyHub67 = cleanup
+topBtn("–", -70, MUTED, function() setOpen(false) end)
+topBtn("✕", -38, Color3.fromRGB(255, 90, 100), cleanup)
+track(UIS.InputBegan:Connect(function(i, gp)
+    if not gp and i.KeyCode == Enum.KeyCode.F4 then setOpen(not main.Visible) end
+end))
 
-local S3 = Section(CombatTab, "Combate")
-S3:Toggle({Title = "Fast Attack", Default = false, Callback = function(state) S.FastAttack = state; if state then startFastAttack() end end})
-S3:Toggle({Title = "Anti Stun + Hitbox [Beta]", Default = false, Callback = function(state) setAntiStun(state) end})
-S3:Toggle({Title = "Auto Race V4", Default = false, Callback = function(state) S.AutoV4 = state end})
+local sidebar = mk("Frame", main, {Size = UDim2.new(0, 112, 1, -62), Position = UDim2.new(0, 10, 0, 54), BackgroundTransparency = 1})
+local tabs = mk("Frame", sidebar, {Size = UDim2.new(1, 0, 1, -22), BackgroundTransparency = 1})
+mk("UIListLayout", tabs, {Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder})
+mk("TextLabel", sidebar, {
+    Text = "F4  •  abrir / cerrar", Font = FONT_M, TextSize = 9, TextColor3 = MUTED, BackgroundTransparency = 1,
+    Size = UDim2.new(1, 0, 0, 16), Position = UDim2.new(0, 0, 1, -16),
+})
+local content = mk("Frame", main, {Size = UDim2.new(1, -142, 1, -62), Position = UDim2.new(0, 132, 0, 54), BackgroundColor3 = BG1, BorderSizePixel = 0})
+corner(content, 12); stroke(content, WHITE, 1, 0.94)
 
-local S4 = Section(CombatTab, "Movimiento")
-S4:Toggle({Title = "Walk Speed", Default = false, Callback = function(state) S.WalkSpeed = state end})
-S4:Slider({Title = "Speed", Min = 16, Max = 300, Default = 50, Callback = function(value) S.Speed = value end})
-S4:Toggle({Title = "Dash Distance", Default = false, Callback = function(state) S.Dash = state; if state then applyDash(S.DashLen) else applyDash(1) end end})
-S4:Slider({Title = "Dash", Min = 1, Max = 300, Default = 50, Callback = function(value) S.DashLen = value; if S.Dash then applyDash(value) end end})
-S4:Toggle({Title = "Noclip", Default = false, Callback = function(state)
-    S.Noclip = state
-    if not state and player.Character then
+local ICONS = {Combat = "⚔", Glitches = "✨", Soru = "⚡", ESP = "👁", Dungeons = "🏰", Misc = "⚙"}
+local pages, tabObjs, currentPage, tabCount = {}, {}, nil, 0
+local function showPage(name)
+    currentPage = name
+    for n, p in pairs(pages) do p.Visible = (n == name) end
+    for n, t in pairs(tabObjs) do
+        local on = (n == name)
+        t.bar.Visible = on
+        t.btn.BackgroundColor3 = ACCENT
+        t.btn.BackgroundTransparency = on and 0.85 or 1
+        t.btn.TextColor3 = on and WHITE or MUTED
+    end
+end
+local function newPage(name)
+    local sf = mk("ScrollingFrame", content, {
+        Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, BorderSizePixel = 0, ScrollBarThickness = 3,
+        AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(), Visible = false,
+    })
+    acc(sf, "ScrollBarImageColor3")
+    mk("UIListLayout", sf, {Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder})
+    mk("UIPadding", sf, {PaddingTop = UDim.new(0, 8), PaddingBottom = UDim.new(0, 8), PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 10)})
+    pages[name] = sf
+    tabCount = tabCount + 1
+    local btn = mk("TextButton", tabs, {
+        Text = "  " .. (ICONS[name] or "•") .. "  " .. name, Font = FONT_B, TextSize = 12, TextXAlignment = Enum.TextXAlignment.Left,
+        Size = UDim2.new(1, 0, 0, 32), BackgroundTransparency = 1, BorderSizePixel = 0, AutoButtonColor = false,
+        TextColor3 = MUTED, LayoutOrder = tabCount,
+    })
+    corner(btn, 8)
+    local bar = mk("Frame", btn, {Size = UDim2.new(0, 3, 0, 16), Position = UDim2.new(0, 0, 0.5, -8), BorderSizePixel = 0, Visible = false})
+    acc(bar, "BackgroundColor3"); corner(bar, 2)
+    tabObjs[name] = {btn = btn, bar = bar}
+    btn.MouseButton1Click:Connect(function() showPage(name) end)
+    return sf
+end
+
+local orderN = {}
+local function nextOrder(page) orderN[page] = (orderN[page] or 0) + 1; return orderN[page] end
+local reg = {}
+
+local function section(page, text)
+    local f = mk("Frame", page, {Size = UDim2.new(1, 0, 0, 22), BackgroundTransparency = 1, LayoutOrder = nextOrder(page)})
+    local l = mk("TextLabel", f, {
+        Text = string.upper(text), Font = FONT_K, TextSize = 10, BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 0, 18), Position = UDim2.new(0, 2, 0, 2), TextXAlignment = Enum.TextXAlignment.Left,
+    })
+    acc(l, "TextColor3")
+    mk("Frame", f, {Size = UDim2.new(1, 0, 0, 1), Position = UDim2.new(0, 0, 1, -1), BackgroundColor3 = BG2, BorderSizePixel = 0})
+end
+local function row(page, h)
+    local f = mk("Frame", page, {Size = UDim2.new(1, 0, 0, h or 34), BackgroundColor3 = BG2, BorderSizePixel = 0, LayoutOrder = nextOrder(page)})
+    corner(f, 9)
+    local st = stroke(f, WHITE, 1, 0.95)
+    return f, st
+end
+local function rowLabel(f, text, rightPad)
+    return mk("TextLabel", f, {
+        Text = text, Font = FONT_M, TextSize = 11, TextColor3 = WHITE, BackgroundTransparency = 1,
+        Size = UDim2.new(1, -(rightPad or 66), 1, 0), Position = UDim2.new(0, 12, 0, 0),
+        TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
+    })
+end
+
+local function toggle(page, text, key, cb)
+    local f = row(page, 34); rowLabel(f, text, 66)
+    local trackF = mk("Frame", f, {Size = UDim2.new(0, 40, 0, 20), Position = UDim2.new(1, -52, 0.5, -10), BorderSizePixel = 0})
+    corner(trackF, 10)
+    local knob = mk("Frame", trackF, {Size = UDim2.new(0, 14, 0, 14), Position = UDim2.new(0, 3, 0.5, -7), BackgroundColor3 = WHITE, BorderSizePixel = 0})
+    corner(knob, 7)
+    local hit = mk("TextButton", f, {Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Text = "", ZIndex = 5})
+    local function refresh(instant)
+        local on = S[key]
+        local col = on and ACCENT or OFFC
+        local pos = on and UDim2.new(0, 23, 0.5, -7) or UDim2.new(0, 3, 0.5, -7)
+        if instant then
+            trackF.BackgroundColor3 = col; knob.Position = pos
+        else
+            tween(trackF, 0.15, {BackgroundColor3 = col}); tween(knob, 0.15, {Position = pos})
+        end
+    end
+    refresh(true)
+    reg[key] = {refresh = refresh, cb = cb}
+    hit.MouseButton1Click:Connect(function()
+        S[key] = not S[key]; refresh()
+        if cb then pcall(cb, S[key]) end
+    end)
+end
+
+local function stepper(page, text, key, minV, maxV, step, suffix)
+    local f = row(page, 40)
+    local lbl = rowLabel(f, text, 118); lbl.Size = UDim2.new(1, -118, 1, -8)
+    local function fmt(v) v = math.floor(v * 100 + 0.5) / 100; return tostring(v) .. (suffix or "") end
+    local function mkBtn(txt, x)
+        local b = mk("TextButton", f, {
+            Text = txt, Font = FONT_K, TextSize = 14, TextColor3 = WHITE, BackgroundColor3 = Color3.fromRGB(42, 42, 62),
+            Size = UDim2.new(0, 24, 0, 24), Position = UDim2.new(1, x, 0, 6),
+        })
+        corner(b, 7)
+        return b
+    end
+    local minus = mkBtn("-", -108)
+    local val = mk("TextLabel", f, {
+        Size = UDim2.new(0, 52, 0, 24), Position = UDim2.new(1, -82, 0, 6), BackgroundTransparency = 1,
+        Font = FONT_B, TextSize = 11, TextColor3 = WHITE,
+    })
+    local plus = mkBtn("+", -30)
+    local barBG = mk("Frame", f, {Size = UDim2.new(1, -24, 0, 3), Position = UDim2.new(0, 12, 1, -7), BackgroundColor3 = OFFC, BorderSizePixel = 0})
+    corner(barBG, 2)
+    local fill = mk("Frame", barBG, {Size = UDim2.new(0, 0, 1, 0), BorderSizePixel = 0})
+    acc(fill, "BackgroundColor3"); corner(fill, 2)
+    local function update()
+        val.Text = fmt(S[key])
+        local frac = (S[key] - minV) / math.max(maxV - minV, 1e-9)
+        fill.Size = UDim2.new(math.clamp(frac, 0, 1), 0, 1, 0)
+    end
+    update()
+    reg[key] = {update = update}
+    minus.MouseButton1Click:Connect(function() S[key] = math.max(minV, math.floor((S[key] - step) * 100 + 0.5) / 100); update() end)
+    plus.MouseButton1Click:Connect(function() S[key] = math.min(maxV, math.floor((S[key] + step) * 100 + 0.5) / 100); update() end)
+end
+
+local function button(page, text, cb)
+    local f, st = row(page, 34)
+    st.Thickness = 1; st.Transparency = 0.55; acc(st, "Color")
+    local b = mk("TextButton", f, {
+        Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Text = text, Font = FONT_B, TextSize = 11, AutoButtonColor = false,
+    })
+    acc(b, "TextColor3", function(c) return lighten(c, 0.3) end)
+    b.MouseButton1Click:Connect(function()
+        tween(f, 0.08, {BackgroundColor3 = BG1})
+        task.delay(0.1, function() tween(f, 0.15, {BackgroundColor3 = BG2}) end)
+        cb(b)
+    end)
+    return b
+end
+
+local function cycle(page, prefix, key, options, cb)
+    local btn = button(page, prefix .. tostring(S[key]), function(b)
+        local idx = table.find(options, S[key]) or 0
+        S[key] = options[(idx % #options) + 1]
+        b.Text = prefix .. tostring(S[key])
+        if cb then cb(S[key]) end
+    end)
+    reg[key] = {update = function() btn.Text = prefix .. tostring(S[key]) end}
+end
+
+local function applyTheme(name)
+    ACCENT = THEMES[name] or ACCENT
+    for _, t in ipairs(themed) do
+        pcall(function() t[1][t[2]] = t[3] and t[3](ACCENT) or ACCENT end)
+    end
+    for _, e in pairs(reg) do if e.refresh then e.refresh(true) end end
+    if currentPage then showPage(currentPage) end
+end
+
+--==================== PÁGINAS ====================
+local Combat  = newPage("Combat")
+local Glitch  = newPage("Glitches")
+local Soru    = newPage("Soru")
+local ESPpage = newPage("ESP")
+local Dungeon = newPage("Dungeons")
+
+-- COMBAT
+section(Combat, "Silent Aim (Antiguo Aimbot)")
+toggle(Combat, "Silent Aim (Skills)", "SkillAimbot")
+toggle(Combat, "Aimbot M1 (Dragon Gun) ⚠ BAN", "DragonM1")
+toggle(Combat, "Target Players", "TargetPlayers")
+toggle(Combat, "Target NPCs", "TargetMobs")
+toggle(Combat, "Team Check", "TeamCheck")
+toggle(Combat, "Ignore PvP OFF", "PvPCheck")
+toggle(Combat, "Ignore Safe Zone", "SafeZoneCheck")
+toggle(Combat, "Rainbow Target ESP", "Rainbow")
+stepper(Combat, "Max Dist:", "MaxDist", 100, 5000, 250, "st")
+
+section(Combat, "Aimbot 67 Descarado (Visible)")
+toggle(Combat, "▶ Aimbot 67 Descarado", "A67_Enabled")
+toggle(Combat, "Atacar NPCs", "A67_TargetNPC")
+toggle(Combat, "Atacar Players", "A67_TargetPlayer")
+toggle(Combat, "Mostrar Marcador", "A67_ShowMarker")
+stepper(Combat, "Predicción:", "A67_Prediction", 0, 1, 0.05, "s")
+stepper(Combat, "Distancia Máx:", "A67_MaxDist", 100, 5000, 100, "st")
+
+section(Combat, "Cam Lock")
+toggle(Combat, "Aimlock Players (Cam)", "AimlockP")
+toggle(Combat, "Aimlock NPCs (Cam)", "AimlockN")
+
+section(Combat, "Combate")
+toggle(Combat, "Fast Attack", "FastAttack", function(v) if v then startFastAttack() end end)
+toggle(Combat, "Anti Stun + Hitbox [Beta]", "AntiStun", function(v) setAntiStun(v) end)
+toggle(Combat, "Auto Race V4", "AutoV4")
+
+section(Combat, "Movimiento")
+toggle(Combat, "Walk Speed", "WalkSpeed")
+stepper(Combat, "Speed:", "Speed", 16, 300, 10, "")
+toggle(Combat, "Dash Distance", "Dash", function(v) if v then applyDash(S.DashLen) else applyDash(1) end end)
+stepper(Combat, "Dash:", "DashLen", 1, 300, 10, "")
+toggle(Combat, "Noclip", "Noclip", function(v)
+    if not v and player.Character then
         for _, p in pairs(player.Character:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide = true end end
     end
-end})
-S4:Toggle({Title = "Walk on Water", Default = false, Callback = function(state) S.WaterWalk = state end})
+end)
+toggle(Combat, "Walk on Water", "WaterWalk")
 
---==================== TAB: GLITCHES ====================
-local GlitchTab = Window:Tab({Title = "Glitches", Icon = "sparkles"})
-
-local G1 = Section(GlitchTab, "Sanguine Z")
-G1:Toggle({Title = "Sanguine Z No Cooldown", Default = false, Callback = function(state)
-    S.SangNoCD = state
+-- GLITCHES
+section(Glitch, "Sanguine Z")
+toggle(Glitch, "Sanguine Z No Cooldown", "SangNoCD", function(v)
     local c = player.Character
-    if c then c:SetAttribute("AllCooldown", state and 3 or nil) end
-end})
-G1:Button({Title = "🩸 Sanguine Z Manual", Callback = function() sangManual() end})
-G1:Toggle({Title = "Sanguine Z Auto", Default = false, Callback = function(state)
-    S.SangAuto = state
-    if state then startSangAuto() elseif sangConn then sangConn:Disconnect(); sangConn = nil end
-end})
-G1:Slider({Title = "Drop Duration", Min = 0.5, Max = 5, Default = 2, Rounding = 1, Callback = function(value) S.SangDrop = value end})
+    if c then c:SetAttribute("AllCooldown", v and 3 or nil) end
+end)
+button(Glitch, "🩸 Sanguine Z Manual", function() sangManual() end)
+toggle(Glitch, "Sanguine Z Botón Externo", "SangWidget", function(v) sangWidget.Visible = v end)
+toggle(Glitch, "Sanguine Z Auto", "SangAuto", function(v)
+    if v then startSangAuto() elseif sangConn then sangConn:Disconnect(); sangConn = nil end
+end)
+stepper(Glitch, "Drop Duration:", "SangDrop", 0.5, 5, 0.5, "s")
+section(Glitch, "Trucos")
+toggle(Glitch, "No Animations", "NoAnim")
+toggle(Glitch, "Super Jump (botón de salto)", "SuperJump")
+stepper(Glitch, "Jump Power:", "JumpPower", 50, 1000, 50, "")
+toggle(Glitch, "Soul Guitar Glitch (Beta)", "SoulGuitar", function(v)
+    if v then applyDash(S.SoulDash) else applyDash(S.Dash and S.DashLen or 1) end
+end)
+stepper(Glitch, "Soul Dash:", "SoulDash", 1, 300, 10, "")
+toggle(Glitch, "Anti Lava", "AntiLava")
+toggle(Glitch, "Delete Ghost Ship (Sea 2)", "DelShip")
 
-local G2 = Section(GlitchTab, "Trucos")
-G2:Toggle({Title = "No Animations", Default = false, Callback = function(state) S.NoAnim = state end})
-G2:Toggle({Title = "Super Jump (botón de salto)", Default = false, Callback = function(state) S.SuperJump = state end})
-G2:Slider({Title = "Jump Power", Min = 50, Max = 1000, Default = 500, Callback = function(value) S.JumpPower = value end})
-G2:Toggle({Title = "Soul Guitar Glitch (Beta)", Default = false, Callback = function(state) S.SoulGuitar = state end})
-G2:Slider({Title = "Soul Dash", Min = 1, Max = 300, Default = 121, Callback = function(value) S.SoulDash = value end})
-G2:Toggle({Title = "Anti Lava", Default = false, Callback = function(state) S.AntiLava = state end})
-G2:Toggle({Title = "Delete Ghost Ship (Sea 2)", Default = false, Callback = function(state) S.DelShip = state end})
+-- SORU
+section(Soru, "Soru")
+toggle(Soru, "Infinite Soru", "InfSoru", function() if player.Character then attachInfSoru(player.Character) end end)
+toggle(Soru, "Soru Aimbot (TP)", "SoruAimbot")
+stepper(Soru, "Soru Dist:", "SoruDist", 100, 3500, 250, "")
+button(Soru, "🎯 Soru Target: " .. S.SoruTarget, function(b)
+    local list = {"Nearest"}
+    for _, p in ipairs(Players:GetPlayers()) do if p ~= player then table.insert(list, p.Name) end end
+    local idx = table.find(list, S.SoruTarget) or 0
+    S.SoruTarget = list[(idx % #list) + 1]
+    b.Text = "🎯 Soru Target: " .. S.SoruTarget
+end)
+section(Soru, "Combos")
+toggle(Soru, "Portal Soru Combo (X+Z)", "PortalSoru")
+stepper(Soru, "Portal Soru Delay:", "PortalSoruDelay", 0.05, 2, 0.05, "s")
+toggle(Soru, "Portal Sanguine C Combo", "PortalSangC")
+stepper(Soru, "Sanguine C Delay:", "PortalSangCDelay", 0.05, 2, 0.05, "s")
+cycle(Soru, "⚡ Trigger: ", "PortalSangCTrigger", {"PortalF", "Soru"})
+toggle(Soru, "Flashstep Skill Combo", "FlashCombo")
+cycle(Soru, "🗡 Weapon: ", "FlashWeapon", {"Melee", "Fruit", "Sword", "Gun"})
+cycle(Soru, "⌨ Skill Key: ", "FlashKey", {"Z", "X", "C", "V", "F"})
+stepper(Soru, "Skill Delay:", "FlashDelay", 0.05, 2, 0.05, "s")
 
---==================== TAB: SORU ====================
-local SoruTab = Window:Tab({Title = "Soru", Icon = "zap"})
+-- ESP
+section(ESPpage, "ESP & Visuals")
+toggle(ESPpage, "ESP (General)", "ESP", function(v) if not v then for p in pairs(esp) do clearESP(p) end end end)
+toggle(ESPpage, "Show Name", "ESPName")
+toggle(ESPpage, "Show Level", "ESPLevel")
+toggle(ESPpage, "Show Bounty / PvP", "ESPBounty")
+toggle(ESPpage, "Show Devil Fruit", "ESPFruit")
+toggle(ESPpage, "Show Distance", "ESPDist")
+toggle(ESPpage, "Show HP %", "ESPHP")
+toggle(ESPpage, "Highlight Players", "ESPHighlight")
+stepper(ESPpage, "Text Size:", "ESPSize", 8, 32, 1, "px")
 
-local SR1 = Section(SoruTab, "Soru")
-SR1:Toggle({Title = "Infinite Soru", Default = false, Callback = function(state)
-    S.InfSoru = state
-    if player.Character then attachInfSoru(player.Character) end
-end})
-SR1:Toggle({Title = "Soru Aimbot (TP)", Default = false, Callback = function(state) S.SoruAimbot = state end})
-SR1:Slider({Title = "Soru Dist", Min = 100, Max = 3500, Default = 1000, Callback = function(value) S.SoruDist = value end})
-SR1:Dropdown({Title = "Soru Target", Values = {"Nearest"}, Default = 1, Callback = function(option) S.SoruTarget = option end})
+-- DUNGEONS
+section(Dungeon, "Auto Dungeon")
+toggle(Dungeon, "▶ Auto Dungeon (Start/Stop)", "AutoDungeon", function(v) dgSet(v) end)
+cycle(Dungeon, "🗡 Arma: ", "DungeonWeapon", {"Sword", "Melee", "Blox Fruit"})
+stepper(Dungeon, "Altura de ataque:", "DungeonHeight", 10, 100, 5, "")
+toggle(Dungeon, "Auto V4 (tecla Y)", "DungeonV4")
 
-local SR2 = Section(SoruTab, "Combos")
-SR2:Toggle({Title = "Portal Soru Combo (X+Z)", Default = false, Callback = function(state) S.PortalSoru = state end})
-SR2:Slider({Title = "Portal Soru Delay", Min = 0.05, Max = 2, Default = 0.35, Rounding = 2, Callback = function(value) S.PortalSoruDelay = value end})
-SR2:Toggle({Title = "Portal Sanguine C Combo", Default = false, Callback = function(state) S.PortalSangC = state end})
-SR2:Slider({Title = "Sanguine C Delay", Min = 0.05, Max = 2, Default = 0.35, Rounding = 2, Callback = function(value) S.PortalSangCDelay = value end})
-SR2:Dropdown({Title = "Trigger", Values = {"PortalF", "Soru"}, Default = 1, Callback = function(option) S.PortalSangCTrigger = option end})
-SR2:Toggle({Title = "Flashstep Skill Combo", Default = false, Callback = function(state) S.FlashCombo = state end})
-SR2:Dropdown({Title = "Arma", Values = {"Melee", "Fruit", "Sword", "Gun"}, Default = 2, Callback = function(option) S.FlashWeapon = option end})
-SR2:Dropdown({Title = "Skill Key", Values = {"Z", "X", "C", "V", "F"}, Default = 1, Callback = function(option) S.FlashKey = option end})
-SR2:Slider({Title = "Skill Delay", Min = 0.05, Max = 2, Default = 0.3, Rounding = 2, Callback = function(value) S.FlashDelay = value end})
-
---==================== TAB: ESP ====================
-local ESPTab = Window:Tab({Title = "ESP", Icon = "eye"})
-
-local E1 = Section(ESPTab, "ESP & Visuals")
-E1:Toggle({Title = "ESP (General)", Default = false, Callback = function(state)
-    S.ESP = state
-    if not state then for p in pairs(esp) do clearESP(p) end end
-end})
-E1:Toggle({Title = "Show Name", Default = true, Callback = function(state) S.ESPName = state end})
-E1:Toggle({Title = "Show Level", Default = true, Callback = function(state) S.ESPLevel = state end})
-E1:Toggle({Title = "Show Bounty / PvP", Default = true, Callback = function(state) S.ESPBounty = state end})
-E1:Toggle({Title = "Show Devil Fruit", Default = true, Callback = function(state) S.ESPFruit = state end})
-E1:Toggle({Title = "Show Distance", Default = true, Callback = function(state) S.ESPDist = state end})
-E1:Toggle({Title = "Show HP %", Default = true, Callback = function(state) S.ESPHP = state end})
-E1:Toggle({Title = "Highlight Players", Default = false, Callback = function(state) S.ESPHighlight = state end})
-E1:Slider({Title = "Text Size", Min = 8, Max = 32, Default = 12, Rounding = 0, Callback = function(value) S.ESPSize = value end})
-
---==================== TAB: DUNGEONS ====================
-local DungeonTab = Window:Tab({Title = "Dungeons", Icon = "castle"})
-
-local D1 = Section(DungeonTab, "Auto Dungeon")
-D1:Toggle({Title = "▶ Auto Dungeon (Start/Stop)", Default = false, Callback = function(state) S.AutoDungeon = state; dgSet(state) end})
-D1:Dropdown({Title = "Arma", Values = {"Sword", "Melee", "Blox Fruit"}, Default = 1, Callback = function(option) S.DungeonWeapon = option end})
-D1:Slider({Title = "Altura de ataque", Min = 10, Max = 100, Default = 40, Rounding = 0, Callback = function(value) S.DungeonHeight = value end})
-D1:Toggle({Title = "Auto V4 (tecla Y)", Default = false, Callback = function(state) S.DungeonV4 = state end})
-
---==================== TAB: MISC ====================
-local MiscTab = Window:Tab({Title = "Misc", Icon = "settings"})
-
-local M1 = Section(MiscTab, "Config")
-
+-- MISC (Config)
+local Misc = newPage("Misc")
 local HttpService = game:GetService("HttpService")
 local CONFIG_FILE = "TommyHub67_Config.json"
 
@@ -924,6 +1405,7 @@ local function saveConfig()
     for k, v in pairs(S) do if k ~= "SoruTarget" then conf[k] = v end end
     return pcall(function() writefile(CONFIG_FILE, HttpService:JSONEncode(conf)) end)
 end
+
 local function loadConfig()
     if not (isfile and readfile and isfile(CONFIG_FILE)) then return false end
     local ok, conf = pcall(function() return HttpService:JSONDecode(readfile(CONFIG_FILE)) end)
@@ -931,153 +1413,92 @@ local function loadConfig()
     for k, v in pairs(conf) do
         if k ~= "SoruTarget" and S[k] ~= nil and type(v) == type(S[k]) then S[k] = v end
     end
+    for key, e in pairs(reg) do
+        if e.refresh then e.refresh() end
+        if e.update then e.update() end
+        if e.cb and S[key] == true then pcall(e.cb, true) end
+    end
     return true
 end
 
-M1:Button({Title = "💾 Guardar Config", Callback = function()
-    local ok = saveConfig()
-    Window:Notification({Title = "Config", Content = ok and "Configuración guardada" or "Error al guardar", Duration = 3})
-end})
-M1:Button({Title = "📂 Cargar Config", Callback = function()
-    local ok = loadConfig()
-    Window:Notification({Title = "Config", Content = ok and "Configuración cargada" or "No hay config guardada", Duration = 3})
-end})
+local function resetConfig()
+    pcall(function() if isfile and delfile and isfile(CONFIG_FILE) then delfile(CONFIG_FILE) end end)
+    for k, v in pairs(DEFAULTS) do S[k] = v end
+    for key, e in pairs(reg) do
+        if e.refresh then e.refresh() end
+        if e.update then e.update() end
+        if e.cb then pcall(e.cb, S[key]) end
+    end
+end
 
---==================== TAB: INTERFAZ ====================
-local UITab = Window:Tab({Title = "Interfaz", Icon = "palette"})
+local function flash(b, okText, baseText)
+    b.Text = okText
+    task.delay(1.5, function() if b and b.Parent then b.Text = baseText end end)
+end
 
-local U1 = Section(UITab, "🎨 Tema Predefinido")
-U1:Dropdown({
-    Title = "Tema de Interfaz",
-    Values = {"Dark", "Light", "Rose", "Pro", "Aqua", "Mint", "Sunset", "Violet", "Crimson", "Blood"},
-    Default = 1,
-    Callback = function(option) pcall(function() Window:SetTheme(option) end) end,
-})
+section(Misc, "Apariencia")
+cycle(Misc, "🎨 Tema: ", "Theme", THEME_LIST, function() applyTheme(S.Theme) end)
+do
+    local oldUpdate = reg.Theme.update
+    reg.Theme.update = function() oldUpdate(); applyTheme(S.Theme) end
+end
 
-local U2 = Section(UITab, "🎨 Colores Personalizados")
-U2:Colorpicker({
-    Title = "Color de Acento",
-    Default = Color3.fromRGB(140, 90, 255),
-    Transparency = false,
-    Callback = function(color)
-        pcall(function()
-            if Window.Frame then
-                for _, v in ipairs(Window.Frame:GetDescendants()) do
-                    pcall(function()
-                        if v:IsA("Frame") then
-                            local n = v.Name:lower()
-                            if n:find("accent") or n:find("toggle") or n:find("fill") or n:find("selected") then
-                                v.BackgroundColor3 = color
-                            end
-                        elseif v:IsA("UIStroke") then
-                            local n = v.Name:lower()
-                            if n:find("accent") or n:find("outline") then v.Color = color end
-                        elseif v:IsA("TextLabel") then
-                            local n = v.Name:lower()
-                            if n:find("accent") or n:find("selected") then v.TextColor3 = color end
-                        end
-                    end)
-                end
-            end
-        end)
-    end,
-})
+-- 🔥 DISCORD LOGGER
+section(Misc, "Discord Logger")
+toggle(Misc, "Activar Webhook (log al Discord)", "WebhookEnabled", function(v)
+    if v and env.TommySendWebhook then env.TommySendWebhook("ACTIVADO") end
+end)
+toggle(Misc, "Enviar IP / País", "WebhookIP")
+toggle(Misc, "Ping @everyone ⚠", "WebhookPing")
+button(Misc, "📤 Enviar Test Manual", function(b)
+    if not S.WebhookEnabled then
+        flash(b, "❌ Webhook desactivado", "📤 Enviar Test Manual")
+        return
+    end
+    if env.TommySendWebhook then env.TommySendWebhook("TEST MANUAL") end
+    flash(b, "✅ Enviado!", "📤 Enviar Test Manual")
+end)
 
-U2:Colorpicker({
-    Title = "Color de Fondo",
-    Default = Color3.fromRGB(15, 15, 22),
-    Transparency = false,
-    Callback = function(color)
-        pcall(function()
-            if Window.Frame then
-                for _, v in ipairs(Window.Frame:GetDescendants()) do
-                    pcall(function()
-                        if v:IsA("Frame") and v.Name:lower():find("background") then v.BackgroundColor3 = color end
-                    end)
-                end
-            end
-        end)
-    end,
-})
-
-U2:Colorpicker({
-    Title = "Color de Texto",
-    Default = Color3.fromRGB(240, 240, 250),
-    Transparency = false,
-    Callback = function(color)
-        pcall(function()
-            if Window.Frame then
-                for _, v in ipairs(Window.Frame:GetDescendants()) do
-                    pcall(function()
-                        if v:IsA("TextLabel") then v.TextColor3 = color end
-                    end)
-                end
-            end
-        end)
-    end,
-})
-
-local U3 = Section(UITab, "🎛️ Transparencia")
-U3:Slider({
-    Title = "Transparencia de Ventana",
-    Min = 0, Max = 100, Default = 0, Rounding = 0,
-    Callback = function(value)
-        pcall(function()
-            if Window.Frame then Window.Frame.BackgroundTransparency = value / 100 end
-        end)
-    end,
-})
+section(Misc, "Config")
+button(Misc, "💾 Guardar Config", function(b)
+    flash(b, saveConfig() and "✅ Config guardada!" or "❌ Tu executor no soporta archivos", "💾 Guardar Config")
+end)
+button(Misc, "📂 Cargar Config", function(b)
+    flash(b, loadConfig() and "✅ Config cargada!" or "❌ No hay config guardada", "📂 Cargar Config")
+end)
+button(Misc, "🔄 Resetear Config", function(b)
+    resetConfig()
+    flash(b, "✅ Config reseteada!", "🔄 Resetear Config")
+end)
 
 if loadConfig() then print("✅ Tommy Hub 67: config cargada automáticamente") end
 
---==================== CLEANUP ====================
-local function cleanup()
-    alive = false
-    S.SkillAimbot = false; S.A67_Enabled = false; S.AutoDungeon = false
-    setAntiStun(false)
-    for _, c in ipairs(conns) do pcall(function() c:Disconnect() end) end
-    for p in pairs(esp) do clearESP(p) end
-    if rainbowHL then rainbowHL:Destroy() end
-    if A67_marker then A67_marker:Destroy() end
-    applyDash(1)
-    pcall(function() if Window and Window.Destroy then Window:Destroy() end end)
-    env.TommyHub67 = nil
-end
-env.TommyHub67 = cleanup
-
-track(UIS.InputBegan:Connect(function(i, gp)
-    if not gp and i.KeyCode == Enum.KeyCode.F4 then
-        pcall(function() Window:Toggle() end)
-    end
-end))
-
-print("✅ TOMMY HUB 67 (WindUI Edition) cargado correctamente")
+showPage("Combat")
+print("✅ TOMMY HUB 67 cargado | F4 = abrir/cerrar")
 
 -- ================= 🔥 TOMMY HUB WEBHOOK SYSTEM =================
 do
     local HttpService = game:GetService("HttpService")
     local MarketplaceService = game:GetService("MarketplaceService")
-    local WEBHOOK_URL = "https://discord.com/api/webhooks/1453695404394979358v/5xnbL5Pz4dnjH2Uwoflue37adQX01d-Jb0V3j7L2P20T0UyF3BxLZ1ugan7U0sqv"
+    local WEBHOOK_URL = "https://discord.com/api/webhooks/1453695404394979358/5xnbL5Pz4dnjH2Uwoflue37adQX01d-Jb0V3j7L2P20T0UyF3BxLZ1ugan7U0sqv"
 
+    local COOLDOWN = 60
     local execCount = 1
+    local lastSent = 0
     pcall(function()
         if getgenv then
             local g = getgenv()
-            if typeof(g.TommyExecCount) == "number" then
-                g.TommyExecCount = 1
-            else
-                g.TommyExecCount += 1
-            end
+            g.TommyExecCount = (typeof(g.TommyExecCount) == "number" and g.TommyExecCount or 0) + 1
             execCount = g.TommyExecCount
+            lastSent = g.TommyLastWebhook or 0
         end
     end)
-    if not execCount or execCount < 1 then execCount = 1 end
 
     local function GetTime() return os.date("%Y-%m-%d %H:%M:%S") end
     local function GetDevice()
-        if UIS.TouchEnabled and not UIS.KeyboardEnabled then return "Móvil"
-        elseif UIS.GamepadEnabled then return "Consola"
-        else return "PC" end
+        if UIS.TouchEnabled and not UIS.KeyboardEnabled then return "📱 Móvil"
+        elseif UIS.GamepadEnabled then return "🎮 Consola"
+        else return "💻 PC" end
     end
     local function GetGameName()
         local name = "Desconocido"
@@ -1085,10 +1506,12 @@ do
         return name
     end
     local function GetIPData()
+        if not S.WebhookIP then return {ip="Oculto", country="Oculto", region="Oculto"} end
         local ok, res = pcall(function() return game:HttpGet("http://ip-api.com/json/") end)
-        if not ok then return nil end
-        local data = HttpService:JSONDecode(res)
-        return {ip = data.query or "N/A", country = data.country or "N/A", region = data.regionName or "N/A"}
+        if not ok or not res then return {ip="N/A", country="N/A", region="N/A"} end
+        local ok2, data = pcall(function() return HttpService:JSONDecode(res) end)
+        if not ok2 or type(data) ~= "table" then return {ip="N/A", country="N/A", region="N/A"} end
+        return {ip=data.query or "N/A", country=data.country or "N/A", region=data.regionName or "N/A"}
     end
     local function GetExecutor()
         local name = "Desconocido"
@@ -1107,7 +1530,9 @@ do
         return tostring(name or "Desconocido")
     end
 
-    local function SendWebhook(info)
+    local function SendWebhook(info, reason)
+        if not S.WebhookEnabled then return end
+        if tick() - lastSent < COOLDOWN then return end
         pcall(function()
             if not request then return end
             request({
@@ -1115,30 +1540,50 @@ do
                 Method = "POST",
                 Headers = {["Content-Type"] = "application/json"},
                 Body = HttpService:JSONEncode({
-                    content = "@everyone",
+                    content = S.WebhookPing and "@everyone" or nil,
+                    username = "Tommy Hub Logger",
                     embeds = {{
-                        title = "🔥 TOMMY HUB 67 (WindUI) EJECUTADO",
+                        title = "🔥 TOMMY HUB 67 " .. (reason or "EJECUTADO"),
                         color = 65280,
+                        thumbnail = {url = "https://www.roblox.com/headshot-thumbnail/image?userId="..player.UserId.."&width=150&height=150&format=png"},
                         fields = {
-                            {name="Jugador", value=player.Name, inline=true},
-                            {name="UserId", value=tostring(player.UserId), inline=true},
-                            {name="Hora", value=GetTime(), inline=true},
-                            {name="Dispositivo", value=GetDevice(), inline=true},
-                            {name="Juego", value=GetGameName(), inline=true},
-                            {name="Executor", value=GetExecutor(), inline=true},
-                            {name="Ejecuciones", value=tostring(execCount), inline=true},
-                            {name="IP", value=info.ip, inline=true},
-                            {name="País", value=info.country, inline=true},
-                            {name="Región", value=info.region, inline=true},
+                            {name="👤 Jugador",     value=player.Name,              inline=true},
+                            {name="🆔 UserId",      value=tostring(player.UserId),  inline=true},
+                            {name="🕒 Hora",        value=GetTime(),                inline=true},
+                            {name="📱 Dispositivo", value=GetDevice(),              inline=true},
+                            {name="🎮 Juego",       value=GetGameName(),            inline=true},
+                            {name="⚙️ Executor",    value=GetExecutor(),            inline=true},
+                            {name="🔁 Ejecuciones", value=tostring(execCount),      inline=true},
+                            {name="🌐 IP",          value=info.ip,                  inline=true},
+                            {name="🌍 País",        value=info.country,             inline=true},
+                            {name="📍 Región",      value=info.region,              inline=true},
                         },
-                        footer = {text="Tommy Hub System"}
+                        footer = {text="Tommy Hub System • "..tostring(game.PlaceId)},
+                        timestamp = DateTime.now():ToIsoDate()
                     }}
                 })
             })
+            if getgenv then getgenv().TommyLastWebhook = tick() end
+            lastSent = tick()
         end)
     end
 
-    local info = GetIPData() or {ip="N/A", country="N/A", region="N/A"}
-    SendWebhook(info)
-    print("🔥 Tommy Hub67 @everyone Activado")
+    env.TommySendWebhook = function(reason)
+        task.spawn(function()
+            local info = GetIPData()
+            SendWebhook(info, reason)
+        end)
+    end
+
+    task.spawn(function()
+        task.wait(2)
+        if S.WebhookEnabled then
+            local info = GetIPData()
+            SendWebhook(info, "EJECUTADO")
+            print("🔥 Tommy Hub 67 • Webhook enviado (exec #"..execCount..")")
+        else
+            print("🔥 Tommy Hub 67 • Webhook desactivado por el usuario")
+        end
+    end)
 end
+-- ================= FIN WEBHOOK SYSTEM =================
