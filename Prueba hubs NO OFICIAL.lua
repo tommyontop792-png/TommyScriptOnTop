@@ -1,7 +1,10 @@
 --==============================================================
--- TOMMY HUB 67  |  Combat · Glitches · Soru · ESP · Aimbot 67
+-- TOMMY HUB 67  |  WindUI Edition
+-- Combat · Glitches · Soru · ESP · Dungeons · Aimbot 67
 -- TikTok: @accountxz
 --==============================================================
+
+--==================== SERVICIOS ====================
 local Players      = game:GetService("Players")
 local RunService   = game:GetService("RunService")
 local UIS          = game:GetService("UserInputService")
@@ -28,7 +31,6 @@ local S = {
     -- Combate
     FastAttack=false, AntiStun=false, WalkSpeed=false, Speed=50,
     Dash=false, DashLen=50, Noclip=false, WaterWalk=false, AutoV4=false,
-    AimlockP=false, AimlockN=false,
     -- Glitches
     SangNoCD=false, SangAuto=false, SangDrop=2, NoAnim=false, JumpPower=500,
     SoulGuitar=false, SoulDash=121, AntiLava=false, DelShip=false, SuperJump=false,
@@ -42,9 +44,9 @@ local S = {
     ESPDist=true, ESPHP=true, ESPHighlight=false, ESPSize=12,
     -- Dungeons
     AutoDungeon=false, DungeonWeapon="Sword", DungeonHeight=40, DungeonV4=false,
-    -- Theme
-    Theme="Purple",
 }
+local DEFAULTS = {}
+for k, v in pairs(S) do DEFAULTS[k] = v end
 local Blacklist = {}
 
 --==================== HELPERS ====================
@@ -52,7 +54,9 @@ local function getHRP() local c = player.Character return c and c:FindFirstChild
 local function getHum() local c = player.Character return c and c:FindFirstChildOfClass("Humanoid") end
 local function pressKey(kc, hold)
     if not VIM or not kc then return end
-    VIM:SendKeyEvent(true, kc, false, game); task.wait(hold or 0.05); VIM:SendKeyEvent(false, kc, false, game)
+    VIM:SendKeyEvent(true, kc, false, game)
+    task.wait(hold or 0.05)
+    VIM:SendKeyEvent(false, kc, false, game)
 end
 local SLOT_KEYS = {Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three, Enum.KeyCode.Four}
 local ATTACK_KW = {"attack","slash","punch","m1","combo","hit","tool","ability","skill","bullet","gun","sword","melee","fruit"}
@@ -71,11 +75,30 @@ end
 
 --==================== TARGETING ====================
 local function pvpOn(p) return p:GetAttribute("PvpDisabled") ~= true end
+local function inSafeZone(p)
+    local ok, res = pcall(function()
+        local c = p.Character; local r = c and c:FindFirstChild("HumanoidRootPart")
+        local wo = workspace:FindFirstChild("_WorldOrigin")
+        if not (r and wo) then return false end
+        local sz = wo:FindFirstChild("SafeZones")
+        if sz then
+            for _, z in pairs(sz:GetChildren()) do
+                local m = z:FindFirstChild("Mesh")
+                if m and m:IsA("SpecialMesh") then
+                    if (z.Position - r.Position).Magnitude <= (z.Size.X * m.Scale.X) / 2 then return true end
+                end
+            end
+        end
+        return false
+    end)
+    return ok and res
+end
 local function isEnemy(p)
     if p == player then return false end
     if S.TeamCheck and p.Team and player.Team and p.Team.Name == "Marines" and player.Team.Name == "Marines" then return false end
     return true
 end
+
 local function closestPlayerChar(maxDist)
     local me = getHRP(); if not me then return nil end
     local best, bd = nil, maxDist or math.huge
@@ -86,22 +109,6 @@ local function closestPlayerChar(maxDist)
             if r and h and h.Health > 0 then
                 local d = (r.Position - me.Position).Magnitude
                 if d < bd then bd = d; best = p.Character end
-            end
-        end
-    end
-    return best
-end
-local function closestNPC()
-    local me = getHRP(); if not me then return nil end
-    local en = workspace:FindFirstChild("Enemies") or workspace
-    local best, bd = nil, S.MaxDist
-    for _, n in pairs(en:GetChildren()) do
-        if n:IsA("Model") and not Players:GetPlayerFromCharacter(n) then
-            local r = n:FindFirstChild("HumanoidRootPart")
-            local h = n:FindFirstChildOfClass("Humanoid")
-            if r and h and h.Health > 0 then
-                local d = (r.Position - me.Position).Magnitude
-                if d < bd then bd = d; best = n end
             end
         end
     end
@@ -118,6 +125,7 @@ local function getAimbotTarget()
         if p then
             if Blacklist[p.Name] or not isEnemy(p) then return end
             if S.PvPCheck and not pvpOn(p) then return end
+            if S.SafeZoneCheck and inSafeZone(p) then return end
         end
         local h = c:FindFirstChildOfClass("Humanoid")
         local part = c:FindFirstChild("HumanoidRootPart")
@@ -132,6 +140,14 @@ local function getAimbotTarget()
         if en then for _, e in ipairs(en:GetChildren()) do check(e) end end
     end
     return best
+end
+
+local function soruTargetPart()
+    local name = S.SoruTarget
+    local c
+    if name == "Nearest" then c = closestPlayerChar(S.SoruDist)
+    else local p = Players:FindFirstChild(name); c = p and p.Character end
+    return c and c:FindFirstChild("HumanoidRootPart")
 end
 
 --==================== SILENT AIM (HOOKS) ====================
@@ -157,6 +173,14 @@ if hookmetamethod and newcclosure and checkcaller and getnamecallmethod then
         local oldIdx
         oldIdx = hookmetamethod(game, "__index", newcclosure(function(self, k)
             if alive and self == mouse and (k == "Hit" or k == "Target") and not checkcaller() then
+                if S.SoruAimbot then
+                    local t = soruTargetPart()
+                    local me = getHRP()
+                    if t and me and (t.Position - me.Position).Magnitude <= S.SoruDist then
+                        if k == "Hit" then return CFrame.new(t.Position) end
+                        return t
+                    end
+                end
                 if S.SkillAimbot and currentTarget then
                     if k == "Hit" then return CFrame.new(currentTarget.Position) end
                     return currentTarget
@@ -187,9 +211,26 @@ end))
 
 --==================== AIMBOT 67 DESCARADO ====================
 local A67_marker = nil
-local A67_findNPC, A67_findPlayer
 
-A67_findNPC = function()
+local function A67_createMarker()
+    if A67_marker and A67_marker.Parent then return A67_marker end
+    local m = Instance.new("Part")
+    m.Name = "TommyA67_Marker"
+    m.Shape = Enum.PartType.Ball
+    m.Size = Vector3.new(1, 1, 1)
+    m.Material = Enum.Material.Neon
+    m.Color = Color3.fromRGB(255, 60, 60)
+    m.Anchored = true
+    m.CanCollide = false
+    m.CanQuery = false
+    m.CanTouch = false
+    m.Transparency = 1
+    m.Parent = workspace
+    A67_marker = m
+    return m
+end
+
+local function A67_findNPC()
     local me = getHRP(); if not me then return nil end
     local best, bd = nil, S.A67_MaxDist
     local en = workspace:FindFirstChild("Enemies")
@@ -208,7 +249,7 @@ A67_findNPC = function()
     return best
 end
 
-A67_findPlayer = function()
+local function A67_findPlayer()
     local me = getHRP(); if not me then return nil end
     local best, bd = nil, S.A67_MaxDist
     for _, p in ipairs(Players:GetPlayers()) do
@@ -222,24 +263,6 @@ A67_findPlayer = function()
         end
     end
     return best
-end
-
-local function A67_createMarker()
-    if A67_marker and A67_marker.Parent then return A67_marker end
-    local m = Instance.new("Part")
-    m.Name = "TommyA67_Marker"
-    m.Shape = Enum.PartType.Ball
-    m.Size = Vector3.new(1, 1, 1)
-    m.Material = Enum.Material.Neon
-    m.Color = Color3.fromRGB(255, 60, 60)
-    m.Anchored = true
-    m.CanCollide = false
-    m.CanQuery = false
-    m.CanTouch = false
-    m.Transparency = 1
-    m.Parent = workspace
-    A67_marker = m
-    return m
 end
 
 track(RunService.RenderStepped:Connect(function()
@@ -467,7 +490,7 @@ task.spawn(function()
     end
 end)
 
---==================== SANGUINE Z ====================
+--==================== SANGUINE ====================
 local lagBusy = false
 local function lagFor(dur)
     if lagBusy then return end
@@ -773,126 +796,445 @@ local function dgSet(on)
     dgGen = dgGen + 1
     dgLast = nil; dgJustDied = false
     if not on then return end
-    local gen = dgGen
-    task.spawn(dgRun, gen)
+    task.spawn(dgRun, dgGen)
 end
 
---==================== UI (VIEJA - PLANA) ====================
-local TweenService = game:GetService("TweenService")
-
-local THEMES = {
-    Purple = Color3.fromRGB(150, 70, 255),
-    Blue   = Color3.fromRGB(60, 140, 255),
-    Red    = Color3.fromRGB(255, 70, 90),
-    Green  = Color3.fromRGB(50, 220, 130),
-    Pink   = Color3.fromRGB(255, 90, 190),
-    Gold   = Color3.fromRGB(255, 190, 40),
-    Cyan   = Color3.fromRGB(40, 220, 230),
-}
-local THEME_LIST = {"Purple", "Blue", "Red", "Green", "Pink", "Gold", "Cyan"}
-local ACCENT = THEMES.Purple
-local WHITE  = Color3.fromRGB(255, 255, 255)
-local BG0    = Color3.fromRGB(11, 11, 17)
-local BG1    = Color3.fromRGB(19, 19, 29)
-local BG2    = Color3.fromRGB(28, 28, 42)
-local OFFC   = Color3.fromRGB(48, 48, 68)
-local MUTED  = Color3.fromRGB(150, 150, 172)
-local FONT_B = Enum.Font.GothamBold
-local FONT_K = Enum.Font.GothamBlack
-local FONT_M = Enum.Font.GothamMedium
-
-local themed = {}
-local function lighten(c, a) return c:Lerp(WHITE, a) end
-local function acc(inst, prop, mix)
-    table.insert(themed, {inst, prop, mix})
-    inst[prop] = mix and mix(ACCENT) or ACCENT
-    return inst
-end
-local function mk(class, parent, props)
-    local o = Instance.new(class)
-    for k, v in pairs(props or {}) do o[k] = v end
-    o.Parent = parent
-    return o
-end
-local function corner(o, r) return mk("UICorner", o, {CornerRadius = UDim.new(0, r)}) end
-local function stroke(o, c, t, tr) return mk("UIStroke", o, {Color = c, Thickness = t or 1, Transparency = tr or 0}) end
-local function tween(o, t, props)
-    TweenService:Create(o, TweenInfo.new(t, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), props):Play()
+--==============================================================
+-- WINDUI INTERFAZ
+--==============================================================
+local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
+if not WindUI then
+    warn("❌ No se pudo cargar WindUI. Verifica tu executor.")
+    return
 end
 
-local gui = Instance.new("ScreenGui")
-gui.Name = "TommyHub67_UI"; gui.ResetOnSpawn = false; gui.DisplayOrder = 99999
-pcall(function() gui.Parent = (gethui and gethui()) or game:GetService("CoreGui") end)
-if not gui.Parent then gui.Parent = player:WaitForChild("PlayerGui") end
-
--- Ventana principal
-local main = mk("Frame", gui, {
-    Size = UDim2.new(0, 500, 0, 360), Position = UDim2.new(0.5, -250, 0.5, -180),
-    BackgroundColor3 = BG0, BackgroundTransparency = 0.04, BorderSizePixel = 0,
-    Active = true, ClipsDescendants = true,
+local Window = WindUI:CreateWindow({
+    Title = "Tommy Hub 67",
+    Icon = "rbxassetid://10734950309",
+    Author = "@accountxz  •  Blox Fruits",
+    Folder = "TommyHub67",
+    Size = UDim2.fromOffset(580, 420),
+    Transparent = true,
+    Theme = "Dark",
+    User = { Enabled = true, Anonymous = true },
+    SideBarWidth = 180,
+    HasOutline = true,
 })
-corner(main, 14)
-acc(stroke(main, ACCENT, 1.4, 0.35), "Color")
-mk("UIGradient", main, {Rotation = 90, Color = ColorSequence.new(Color3.fromRGB(24, 21, 38), Color3.fromRGB(10, 10, 15))})
 
--- Header
-local header = mk("Frame", main, {Size = UDim2.new(1, 0, 0, 46), BackgroundTransparency = 1})
-local logo = mk("Frame", header, {Size = UDim2.new(0, 30, 0, 30), Position = UDim2.new(0, 12, 0, 8), BorderSizePixel = 0})
-acc(logo, "BackgroundColor3"); corner(logo, 9)
-mk("TextLabel", logo, {Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Text = "T", Font = FONT_K, TextSize = 17, TextColor3 = WHITE})
-local title = mk("TextLabel", header, {
-    Text = "TOMMY HUB 67", Font = FONT_K, TextSize = 15, TextColor3 = WHITE, BackgroundTransparency = 1,
-    Size = UDim2.new(0, 200, 0, 18), Position = UDim2.new(0, 50, 0, 6), TextXAlignment = Enum.TextXAlignment.Left,
+-- Notificación de bienvenida
+Window:Notification({
+    Title = "Tommy Hub 67",
+    Content = "Script cargado correctamente",
+    Duration = 5,
 })
-acc(mk("UIGradient", title, {}), "Color", function(c) return ColorSequence.new(c, lighten(c, 0.55)) end)
-mk("TextLabel", header, {
-    Text = "@accountxz  •  Blox Fruits", Font = FONT_M, TextSize = 10, TextColor3 = MUTED, BackgroundTransparency = 1,
-    Size = UDim2.new(0, 200, 0, 14), Position = UDim2.new(0, 50, 0, 25), TextXAlignment = Enum.TextXAlignment.Left,
-})
-local divider = mk("Frame", main, {Size = UDim2.new(1, -24, 0, 1), Position = UDim2.new(0, 12, 0, 46), BorderSizePixel = 0, BackgroundTransparency = 0.7})
-acc(divider, "BackgroundColor3")
 
--- Arrastrar
-do
-    local dragging, dragStart, startPos, dragInput
-    header.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true; dragStart = input.Position; startPos = main.Position
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then dragging = false end
-            end)
+--==================== TAB: COMBAT ====================
+local CombatTab = Window:Tab({Title = "Combat", Icon = "sword"})
+
+local SilentSection = CombatTab:Section({Title = "Silent Aim (Skills)"})
+
+SilentSection:Toggle({
+    Title = "Silent Aim (Skills)",
+    Desc = "Redirige los remotes sin mover la cámara.",
+    Default = false,
+    Callback = function(state) S.SkillAimbot = state end,
+})
+SilentSection:Toggle({
+    Title = "Aimbot M1 (Dragon Gun) ⚠ BAN",
+    Default = false,
+    Callback = function(state) S.DragonM1 = state end,
+})
+SilentSection:Toggle({
+    Title = "Target Players",
+    Default = true,
+    Callback = function(state) S.TargetPlayers = state end,
+})
+SilentSection:Toggle({
+    Title = "Target NPCs",
+    Default = false,
+    Callback = function(state) S.TargetMobs = state end,
+})
+SilentSection:Toggle({
+    Title = "Team Check",
+    Default = false,
+    Callback = function(state) S.TeamCheck = state end,
+})
+SilentSection:Toggle({
+    Title = "Ignore PvP OFF",
+    Default = true,
+    Callback = function(state) S.PvPCheck = state end,
+})
+SilentSection:Toggle({
+    Title = "Rainbow Target ESP",
+    Default = false,
+    Callback = function(state) S.Rainbow = state end,
+})
+SilentSection:Slider({
+    Title = "Max Dist",
+    Desc = "Distancia máxima del objetivo",
+    Min = 100, Max = 5000, Default = 2500, Rounding = 0,
+    Callback = function(value) S.MaxDist = value end,
+})
+
+local A67Section = CombatTab:Section({Title = "Aimbot 67 Descarado (Visible)"})
+
+A67Section:Toggle({
+    Title = "▶ Aimbot 67 Descarado",
+    Desc = "Mueve la cámara al objetivo con predicción y marcador.",
+    Default = false,
+    Callback = function(state) S.A67_Enabled = state end,
+})
+A67Section:Toggle({
+    Title = "Atacar NPCs",
+    Default = true,
+    Callback = function(state) S.A67_TargetNPC = state end,
+})
+A67Section:Toggle({
+    Title = "Atacar Players",
+    Default = false,
+    Callback = function(state) S.A67_TargetPlayer = state end,
+})
+A67Section:Toggle({
+    Title = "Mostrar Marcador",
+    Default = true,
+    Callback = function(state) S.A67_ShowMarker = state end,
+})
+A67Section:Slider({
+    Title = "Predicción",
+    Min = 0, Max = 1, Default = 0.15, Rounding = 2,
+    Callback = function(value) S.A67_Prediction = value end,
+})
+A67Section:Slider({
+    Title = "Distancia Máx",
+    Min = 100, Max = 5000, Default = 1500, Rounding = 0,
+    Callback = function(value) S.A67_MaxDist = value end,
+})
+
+local CombSection = CombatTab:Section({Title = "Combate"})
+
+CombSection:Toggle({
+    Title = "Fast Attack",
+    Default = false,
+    Callback = function(state) S.FastAttack = state; if state then startFastAttack() end end,
+})
+CombSection:Toggle({
+    Title = "Anti Stun + Hitbox [Beta]",
+    Default = false,
+    Callback = function(state) setAntiStun(state) end,
+})
+CombSection:Toggle({
+    Title = "Auto Race V4",
+    Default = false,
+    Callback = function(state) S.AutoV4 = state end,
+})
+
+local MoveSection = CombatTab:Section({Title = "Movimiento"})
+
+MoveSection:Toggle({
+    Title = "Walk Speed",
+    Default = false,
+    Callback = function(state) S.WalkSpeed = state end,
+})
+MoveSection:Slider({
+    Title = "Speed",
+    Min = 16, Max = 300, Default = 50,
+    Callback = function(value) S.Speed = value end,
+})
+MoveSection:Toggle({
+    Title = "Dash Distance",
+    Default = false,
+    Callback = function(state)
+        S.Dash = state
+        if state then applyDash(S.DashLen) else applyDash(1) end
+    end,
+})
+MoveSection:Slider({
+    Title = "Dash",
+    Min = 1, Max = 300, Default = 50,
+    Callback = function(value) S.DashLen = value; if S.Dash then applyDash(value) end end,
+})
+MoveSection:Toggle({
+    Title = "Noclip",
+    Default = false,
+    Callback = function(state)
+        S.Noclip = state
+        if not state and player.Character then
+            for _, p in pairs(player.Character:GetDescendants()) do
+                if p:IsA("BasePart") then p.CanCollide = true end
+            end
         end
-    end)
-    header.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
-    end)
-    track(UIS.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            local d = input.Position - dragStart
-            main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y)
-        end
-    end))
-end
-
--- Botón flotante
-local openBtn = mk("TextButton", gui, {
-    Size = UDim2.new(0, 44, 0, 44), Position = UDim2.new(0, 15, 0, 15), Text = "T67", Font = FONT_K, TextSize = 12,
-    TextColor3 = WHITE, BackgroundColor3 = BG0, Visible = false, Active = true, Draggable = true, AutoButtonColor = false,
+    end,
 })
-corner(openBtn, 22); acc(stroke(openBtn, ACCENT, 2), "Color")
-local function setOpen(v) main.Visible = v; openBtn.Visible = not v end
-openBtn.MouseButton1Click:Connect(function() setOpen(true) end)
+MoveSection:Toggle({
+    Title = "Walk on Water",
+    Default = false,
+    Callback = function(state) S.WaterWalk = state end,
+})
 
--- Top buttons
-local function topBtn(txt, x, col, cb)
-    local b = mk("TextButton", header, {
-        Text = txt, Font = FONT_K, TextSize = 13, TextColor3 = col, BackgroundColor3 = BG2,
-        Size = UDim2.new(0, 26, 0, 26), Position = UDim2.new(1, x, 0, 10),
-    })
-    corner(b, 8)
-    b.MouseButton1Click:Connect(cb)
+--==================== TAB: GLITCHES ====================
+local GlitchTab = Window:Tab({Title = "Glitches", Icon = "sparkles"})
+
+local SangSection = GlitchTab:Section({Title = "Sanguine Z"})
+
+SangSection:Toggle({
+    Title = "Sanguine Z No Cooldown",
+    Default = false,
+    Callback = function(state)
+        S.SangNoCD = state
+        local c = player.Character
+        if c then c:SetAttribute("AllCooldown", state and 3 or nil) end
+    end,
+})
+SangSection:Button({
+    Title = "🩸 Sanguine Z Manual",
+    Callback = function() sangManual() end,
+})
+SangSection:Toggle({
+    Title = "Sanguine Z Auto",
+    Default = false,
+    Callback = function(state)
+        S.SangAuto = state
+        if state then startSangAuto() elseif sangConn then sangConn:Disconnect(); sangConn = nil end
+    end,
+})
+SangSection:Slider({
+    Title = "Drop Duration",
+    Min = 0.5, Max = 5, Default = 2, Rounding = 1,
+    Callback = function(value) S.SangDrop = value end,
+})
+
+local TrucosSection = GlitchTab:Section({Title = "Trucos"})
+
+TrucosSection:Toggle({
+    Title = "No Animations",
+    Default = false,
+    Callback = function(state) S.NoAnim = state end,
+})
+TrucosSection:Toggle({
+    Title = "Super Jump (botón de salto)",
+    Default = false,
+    Callback = function(state) S.SuperJump = state end,
+})
+TrucosSection:Slider({
+    Title = "Jump Power",
+    Min = 50, Max = 1000, Default = 500,
+    Callback = function(value) S.JumpPower = value end,
+})
+TrucosSection:Toggle({
+    Title = "Soul Guitar Glitch (Beta)",
+    Default = false,
+    Callback = function(state) S.SoulGuitar = state end,
+})
+TrucosSection:Slider({
+    Title = "Soul Dash",
+    Min = 1, Max = 300, Default = 121,
+    Callback = function(value) S.SoulDash = value end,
+})
+TrucosSection:Toggle({
+    Title = "Anti Lava",
+    Default = false,
+    Callback = function(state) S.AntiLava = state end,
+})
+TrucosSection:Toggle({
+    Title = "Delete Ghost Ship (Sea 2)",
+    Default = false,
+    Callback = function(state) S.DelShip = state end,
+})
+
+--==================== TAB: SORU ====================
+local SoruTab = Window:Tab({Title = "Soru", Icon = "zap"})
+
+local SoruSection = SoruTab:Section({Title = "Soru"})
+
+SoruSection:Toggle({
+    Title = "Infinite Soru",
+    Default = false,
+    Callback = function(state)
+        S.InfSoru = state
+        if player.Character then attachInfSoru(player.Character) end
+    end,
+})
+SoruSection:Toggle({
+    Title = "Soru Aimbot (TP)",
+    Default = false,
+    Callback = function(state) S.SoruAimbot = state end,
+})
+SoruSection:Slider({
+    Title = "Soru Dist",
+    Min = 100, Max = 3500, Default = 1000,
+    Callback = function(value) S.SoruDist = value end,
+})
+SoruSection:Dropdown({
+    Title = "Soru Target",
+    Values = {"Nearest"},
+    Default = 1,
+    Callback = function(option) S.SoruTarget = option end,
+})
+
+local ComboSection = SoruTab:Section({Title = "Combos"})
+
+ComboSection:Toggle({
+    Title = "Portal Soru Combo (X+Z)",
+    Default = false,
+    Callback = function(state) S.PortalSoru = state end,
+})
+ComboSection:Slider({
+    Title = "Portal Soru Delay",
+    Min = 0.05, Max = 2, Default = 0.35, Rounding = 2,
+    Callback = function(value) S.PortalSoruDelay = value end,
+})
+ComboSection:Toggle({
+    Title = "Portal Sanguine C Combo",
+    Default = false,
+    Callback = function(state) S.PortalSangC = state end,
+})
+ComboSection:Slider({
+    Title = "Sanguine C Delay",
+    Min = 0.05, Max = 2, Default = 0.35, Rounding = 2,
+    Callback = function(value) S.PortalSangCDelay = value end,
+})
+ComboSection:Dropdown({
+    Title = "Trigger",
+    Values = {"PortalF", "Soru"},
+    Default = 1,
+    Callback = function(option) S.PortalSangCTrigger = option end,
+})
+ComboSection:Toggle({
+    Title = "Flashstep Skill Combo",
+    Default = false,
+    Callback = function(state) S.FlashCombo = state end,
+})
+ComboSection:Dropdown({
+    Title = "Arma",
+    Values = {"Melee", "Fruit", "Sword", "Gun"},
+    Default = 2,
+    Callback = function(option) S.FlashWeapon = option end,
+})
+ComboSection:Dropdown({
+    Title = "Skill Key",
+    Values = {"Z", "X", "C", "V", "F"},
+    Default = 1,
+    Callback = function(option) S.FlashKey = option end,
+})
+ComboSection:Slider({
+    Title = "Skill Delay",
+    Min = 0.05, Max = 2, Default = 0.3, Rounding = 2,
+    Callback = function(value) S.FlashDelay = value end,
+})
+
+--==================== TAB: ESP ====================
+local ESPTab = Window:Tab({Title = "ESP", Icon = "eye"})
+
+local ESPSection = ESPTab:Section({Title = "ESP & Visuals"})
+
+ESPSection:Toggle({
+    Title = "ESP (General)",
+    Default = false,
+    Callback = function(state)
+        S.ESP = state
+        if not state then for p in pairs(esp) do clearESP(p) end end
+    end,
+})
+ESPSection:Toggle({ Title = "Show Name", Default = true, Callback = function(state) S.ESPName = state end })
+ESPSection:Toggle({ Title = "Show Level", Default = true, Callback = function(state) S.ESPLevel = state end })
+ESPSection:Toggle({ Title = "Show Bounty / PvP", Default = true, Callback = function(state) S.ESPBounty = state end })
+ESPSection:Toggle({ Title = "Show Devil Fruit", Default = true, Callback = function(state) S.ESPFruit = state end })
+ESPSection:Toggle({ Title = "Show Distance", Default = true, Callback = function(state) S.ESPDist = state end })
+ESPSection:Toggle({ Title = "Show HP %", Default = true, Callback = function(state) S.ESPHP = state end })
+ESPSection:Toggle({ Title = "Highlight Players", Default = false, Callback = function(state) S.ESPHighlight = state end })
+ESPSection:Slider({
+    Title = "Text Size",
+    Min = 8, Max = 32, Default = 12, Rounding = 0,
+    Callback = function(value) S.ESPSize = value end,
+})
+
+--==================== TAB: DUNGEONS ====================
+local DungeonTab = Window:Tab({Title = "Dungeons", Icon = "castle"})
+
+local DgSection = DungeonTab:Section({Title = "Auto Dungeon"})
+
+DgSection:Toggle({
+    Title = "▶ Auto Dungeon (Start/Stop)",
+    Default = false,
+    Callback = function(state) S.AutoDungeon = state; dgSet(state) end,
+})
+DgSection:Dropdown({
+    Title = "Arma",
+    Values = {"Sword", "Melee", "Blox Fruit"},
+    Default = 1,
+    Callback = function(option) S.DungeonWeapon = option end,
+})
+DgSection:Slider({
+    Title = "Altura de ataque",
+    Min = 10, Max = 100, Default = 40, Rounding = 0,
+    Callback = function(value) S.DungeonHeight = value end,
+})
+DgSection:Toggle({
+    Title = "Auto V4 (tecla Y)",
+    Default = false,
+    Callback = function(state) S.DungeonV4 = state end,
+})
+
+--==================== TAB: MISC ====================
+local MiscTab = Window:Tab({Title = "Misc", Icon = "settings"})
+
+local ConfigSection = MiscTab:Section({Title = "Config"})
+
+local HttpService = game:GetService("HttpService")
+local CONFIG_FILE = "TommyHub67_Config.json"
+
+local function saveConfig()
+    if not writefile then return false end
+    local conf = {}
+    for k, v in pairs(S) do if k ~= "SoruTarget" then conf[k] = v end end
+    return pcall(function() writefile(CONFIG_FILE, HttpService:JSONEncode(conf)) end)
 end
 
+local function loadConfig()
+    if not (isfile and readfile and isfile(CONFIG_FILE)) then return false end
+    local ok, conf = pcall(function() return HttpService:JSONDecode(readfile(CONFIG_FILE)) end)
+    if not ok or type(conf) ~= "table" then return false end
+    for k, v in pairs(conf) do
+        if k ~= "SoruTarget" and S[k] ~= nil and type(v) == type(S[k]) then S[k] = v end
+    end
+    return true
+end
+
+ConfigSection:Button({
+    Title = "💾 Guardar Config",
+    Callback = function()
+        local ok = saveConfig()
+        Window:Notification({
+            Title = "Config",
+            Content = ok and "Configuración guardada" or "Error al guardar",
+            Duration = 3,
+        })
+    end,
+})
+ConfigSection:Button({
+    Title = "📂 Cargar Config",
+    Callback = function()
+        local ok = loadConfig()
+        Window:Notification({
+            Title = "Config",
+            Content = ok and "Configuración cargada" or "No hay config guardada",
+            Duration = 3,
+        })
+    end,
+})
+
+local ThemeSection = MiscTab:Section({Title = "Apariencia"})
+
+ThemeSection:Dropdown({
+    Title = "Tema",
+    Values = {"Dark", "Light", "Rose", "Pro"},
+    Default = 1,
+    Callback = function(option) pcall(function() Window:SetTheme(option) end) end,
+})
+
+if loadConfig() then print("✅ Tommy Hub 67: config cargada automáticamente") end
+
+--==================== CLEANUP ====================
 local function cleanup()
     alive = false
     S.SkillAimbot = false; S.A67_Enabled = false; S.AutoDungeon = false
@@ -902,298 +1244,19 @@ local function cleanup()
     if rainbowHL then rainbowHL:Destroy() end
     if A67_marker then A67_marker:Destroy() end
     applyDash(1)
-    pcall(function() gui:Destroy() end)
+    pcall(function() if Window and Window.Destroy then Window:Destroy() end end)
     env.TommyHub67 = nil
 end
 env.TommyHub67 = cleanup
-topBtn("–", -70, MUTED, function() setOpen(false) end)
-topBtn("✕", -38, Color3.fromRGB(255, 90, 100), cleanup)
+
+-- Hotkey F4 para ocultar/mostrar la ventana
 track(UIS.InputBegan:Connect(function(i, gp)
-    if not gp and i.KeyCode == Enum.KeyCode.F4 then setOpen(not main.Visible) end
+    if not gp and i.KeyCode == Enum.KeyCode.F4 then
+        pcall(function() Window:Toggle() end)
+    end
 end))
 
--- Sidebar + content
-local sidebar = mk("Frame", main, {Size = UDim2.new(0, 112, 1, -62), Position = UDim2.new(0, 10, 0, 54), BackgroundTransparency = 1})
-local tabs = mk("Frame", sidebar, {Size = UDim2.new(1, 0, 1, -22), BackgroundTransparency = 1})
-mk("UIListLayout", tabs, {Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder})
-mk("TextLabel", sidebar, {
-    Text = "F4  •  abrir / cerrar", Font = FONT_M, TextSize = 9, TextColor3 = MUTED, BackgroundTransparency = 1,
-    Size = UDim2.new(1, 0, 0, 16), Position = UDim2.new(0, 0, 1, -16),
-})
-local content = mk("Frame", main, {Size = UDim2.new(1, -142, 1, -62), Position = UDim2.new(0, 132, 0, 54), BackgroundColor3 = BG1, BorderSizePixel = 0})
-corner(content, 12); stroke(content, WHITE, 1, 0.94)
-
-local ICONS = {Combat = "⚔", Glitches = "✨", Soru = "⚡", ESP = "👁", Dungeons = "🏰", Misc = "⚙"}
-local pages, tabObjs, currentPage, tabCount = {}, {}, nil, 0
-local function showPage(name)
-    currentPage = name
-    for n, p in pairs(pages) do p.Visible = (n == name) end
-    for n, t in pairs(tabObjs) do
-        local on = (n == name)
-        t.bar.Visible = on
-        t.btn.BackgroundColor3 = ACCENT
-        t.btn.BackgroundTransparency = on and 0.85 or 1
-        t.btn.TextColor3 = on and WHITE or MUTED
-    end
-end
-local function newPage(name)
-    local sf = mk("ScrollingFrame", content, {
-        Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, BorderSizePixel = 0, ScrollBarThickness = 3,
-        AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(), Visible = false,
-    })
-    acc(sf, "ScrollBarImageColor3")
-    mk("UIListLayout", sf, {Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder})
-    mk("UIPadding", sf, {PaddingTop = UDim.new(0, 8), PaddingBottom = UDim.new(0, 8), PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 10)})
-    pages[name] = sf
-    tabCount = tabCount + 1
-    local btn = mk("TextButton", tabs, {
-        Text = "  " .. (ICONS[name] or "•") .. "  " .. name, Font = FONT_B, TextSize = 12, TextXAlignment = Enum.TextXAlignment.Left,
-        Size = UDim2.new(1, 0, 0, 32), BackgroundTransparency = 1, BorderSizePixel = 0, AutoButtonColor = false,
-        TextColor3 = MUTED, LayoutOrder = tabCount,
-    })
-    corner(btn, 8)
-    local bar = mk("Frame", btn, {Size = UDim2.new(0, 3, 0, 16), Position = UDim2.new(0, 0, 0.5, -8), BorderSizePixel = 0, Visible = false})
-    acc(bar, "BackgroundColor3"); corner(bar, 2)
-    tabObjs[name] = {btn = btn, bar = bar}
-    btn.MouseButton1Click:Connect(function() showPage(name) end)
-    return sf
-end
-
-local orderN = {}
-local function nextOrder(page) orderN[page] = (orderN[page] or 0) + 1; return orderN[page] end
-local reg = {}
-
-local function section(page, text)
-    local f = mk("Frame", page, {Size = UDim2.new(1, 0, 0, 22), BackgroundTransparency = 1, LayoutOrder = nextOrder(page)})
-    local l = mk("TextLabel", f, {
-        Text = string.upper(text), Font = FONT_K, TextSize = 10, BackgroundTransparency = 1,
-        Size = UDim2.new(1, 0, 0, 18), Position = UDim2.new(0, 2, 0, 2), TextXAlignment = Enum.TextXAlignment.Left,
-    })
-    acc(l, "TextColor3")
-    mk("Frame", f, {Size = UDim2.new(1, 0, 0, 1), Position = UDim2.new(0, 0, 1, -1), BackgroundColor3 = BG2, BorderSizePixel = 0})
-end
-local function row(page, h)
-    local f = mk("Frame", page, {Size = UDim2.new(1, 0, 0, h or 34), BackgroundColor3 = BG2, BorderSizePixel = 0, LayoutOrder = nextOrder(page)})
-    corner(f, 9)
-    local st = stroke(f, WHITE, 1, 0.95)
-    return f, st
-end
-local function rowLabel(f, text, rightPad)
-    return mk("TextLabel", f, {
-        Text = text, Font = FONT_M, TextSize = 11, TextColor3 = WHITE, BackgroundTransparency = 1,
-        Size = UDim2.new(1, -(rightPad or 66), 1, 0), Position = UDim2.new(0, 12, 0, 0),
-        TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
-    })
-end
-
-local function toggle(page, text, key, cb)
-    local f = row(page, 34); rowLabel(f, text, 66)
-    local trackF = mk("Frame", f, {Size = UDim2.new(0, 40, 0, 20), Position = UDim2.new(1, -52, 0.5, -10), BorderSizePixel = 0})
-    corner(trackF, 10)
-    local knob = mk("Frame", trackF, {Size = UDim2.new(0, 14, 0, 14), Position = UDim2.new(0, 3, 0.5, -7), BackgroundColor3 = WHITE, BorderSizePixel = 0})
-    corner(knob, 7)
-    local hit = mk("TextButton", f, {Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Text = "", ZIndex = 5})
-    local function refresh(instant)
-        local on = S[key]
-        local col = on and ACCENT or OFFC
-        local pos = on and UDim2.new(0, 23, 0.5, -7) or UDim2.new(0, 3, 0.5, -7)
-        if instant then
-            trackF.BackgroundColor3 = col; knob.Position = pos
-        else
-            tween(trackF, 0.15, {BackgroundColor3 = col}); tween(knob, 0.15, {Position = pos})
-        end
-    end
-    refresh(true)
-    reg[key] = {refresh = refresh, cb = cb}
-    hit.MouseButton1Click:Connect(function()
-        S[key] = not S[key]; refresh()
-        if cb then pcall(cb, S[key]) end
-    end)
-end
-
-local function stepper(page, text, key, minV, maxV, step, suffix)
-    local f = row(page, 40)
-    local lbl = rowLabel(f, text, 118); lbl.Size = UDim2.new(1, -118, 1, -8)
-    local function fmt(v) v = math.floor(v * 100 + 0.5) / 100; return tostring(v) .. (suffix or "") end
-    local function mkBtn(txt, x)
-        local b = mk("TextButton", f, {
-            Text = txt, Font = FONT_K, TextSize = 14, TextColor3 = WHITE, BackgroundColor3 = Color3.fromRGB(42, 42, 62),
-            Size = UDim2.new(0, 24, 0, 24), Position = UDim2.new(1, x, 0, 6),
-        })
-        corner(b, 7)
-        return b
-    end
-    local minus = mkBtn("-", -108)
-    local val = mk("TextLabel", f, {
-        Size = UDim2.new(0, 52, 0, 24), Position = UDim2.new(1, -82, 0, 6), BackgroundTransparency = 1,
-        Font = FONT_B, TextSize = 11, TextColor3 = WHITE,
-    })
-    local plus = mkBtn("+", -30)
-    local barBG = mk("Frame", f, {Size = UDim2.new(1, -24, 0, 3), Position = UDim2.new(0, 12, 1, -7), BackgroundColor3 = OFFC, BorderSizePixel = 0})
-    corner(barBG, 2)
-    local fill = mk("Frame", barBG, {Size = UDim2.new(0, 0, 1, 0), BorderSizePixel = 0})
-    acc(fill, "BackgroundColor3"); corner(fill, 2)
-    local function update()
-        val.Text = fmt(S[key])
-        local frac = (S[key] - minV) / math.max(maxV - minV, 1e-9)
-        fill.Size = UDim2.new(math.clamp(frac, 0, 1), 0, 1, 0)
-    end
-    update()
-    reg[key] = {update = update}
-    minus.MouseButton1Click:Connect(function() S[key] = math.max(minV, math.floor((S[key] - step) * 100 + 0.5) / 100); update() end)
-    plus.MouseButton1Click:Connect(function() S[key] = math.min(maxV, math.floor((S[key] + step) * 100 + 0.5) / 100); update() end)
-end
-
-local function button(page, text, cb)
-    local f, st = row(page, 34)
-    st.Thickness = 1; st.Transparency = 0.55; acc(st, "Color")
-    local b = mk("TextButton", f, {
-        Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Text = text, Font = FONT_B, TextSize = 11, AutoButtonColor = false,
-    })
-    acc(b, "TextColor3", function(c) return lighten(c, 0.3) end)
-    b.MouseButton1Click:Connect(function()
-        tween(f, 0.08, {BackgroundColor3 = BG1})
-        task.delay(0.1, function() tween(f, 0.15, {BackgroundColor3 = BG2}) end)
-        cb(b)
-    end)
-    return b
-end
-
-local function cycle(page, prefix, key, options, cb)
-    local btn = button(page, prefix .. tostring(S[key]), function(b)
-        local idx = table.find(options, S[key]) or 0
-        S[key] = options[(idx % #options) + 1]
-        b.Text = prefix .. tostring(S[key])
-        if cb then cb(S[key]) end
-    end)
-    reg[key] = {update = function() btn.Text = prefix .. tostring(S[key]) end}
-end
-
-local function applyTheme(name)
-    ACCENT = THEMES[name] or ACCENT
-    for _, t in ipairs(themed) do
-        pcall(function() t[1][t[2]] = t[3] and t[3](ACCENT) or ACCENT end)
-    end
-    for _, e in pairs(reg) do if e.refresh then e.refresh(true) end end
-    if currentPage then showPage(currentPage) end
-end
-
---==================== PÁGINAS ====================
-local Combat  = newPage("Combat")
-local Glitch  = newPage("Glitches")
-local Soru    = newPage("Soru")
-local ESPpage = newPage("ESP")
-local Dungeon = newPage("Dungeons")
-
--- === COMBAT ===
-section(Combat, "Silent Aim")
-toggle(Combat, "Silent Aim (Skills)", "SkillAimbot")
-toggle(Combat, "Aimbot M1 (Dragon Gun) ⚠ BAN", "DragonM1")
-toggle(Combat, "Target Players", "TargetPlayers")
-toggle(Combat, "Target NPCs", "TargetMobs")
-toggle(Combat, "Team Check", "TeamCheck")
-toggle(Combat, "Ignore PvP OFF", "PvPCheck")
-toggle(Combat, "Rainbow Target ESP", "Rainbow")
-stepper(Combat, "Max Dist:", "MaxDist", 100, 5000, 250, "st")
-
-section(Combat, "Aimbot 67 Descarado (Visible)")
-toggle(Combat, "▶ Aimbot 67 Descarado", "A67_Enabled")
-toggle(Combat, "Atacar NPCs", "A67_TargetNPC")
-toggle(Combat, "Atacar Players", "A67_TargetPlayer")
-toggle(Combat, "Mostrar Marcador", "A67_ShowMarker")
-stepper(Combat, "Predicción:", "A67_Prediction", 0, 1, 0.05, "s")
-stepper(Combat, "Distancia Máx:", "A67_MaxDist", 100, 5000, 100, "st")
-
-section(Combat, "Combate")
-toggle(Combat, "Fast Attack", "FastAttack", function(v) if v then startFastAttack() end end)
-toggle(Combat, "Anti Stun + Hitbox [Beta]", "AntiStun", function(v) setAntiStun(v) end)
-toggle(Combat, "Auto Race V4", "AutoV4")
-
-section(Combat, "Movimiento")
-toggle(Combat, "Walk Speed", "WalkSpeed")
-stepper(Combat, "Speed:", "Speed", 16, 300, 10, "")
-toggle(Combat, "Dash Distance", "Dash", function(v) if v then applyDash(S.DashLen) else applyDash(1) end end)
-stepper(Combat, "Dash:", "DashLen", 1, 300, 10, "")
-toggle(Combat, "Noclip", "Noclip", function(v)
-    if not v and player.Character then
-        for _, p in pairs(player.Character:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide = true end end
-    end
-end)
-toggle(Combat, "Walk on Water", "WaterWalk")
-
--- === GLITCHES ===
-section(Glitch, "Sanguine Z")
-toggle(Glitch, "Sanguine Z No Cooldown", "SangNoCD", function(v)
-    local c = player.Character
-    if c then c:SetAttribute("AllCooldown", v and 3 or nil) end
-end)
-button(Glitch, "🩸 Sanguine Z Manual", function() sangManual() end)
-toggle(Glitch, "Sanguine Z Auto", "SangAuto", function(v)
-    if v then startSangAuto() elseif sangConn then sangConn:Disconnect(); sangConn = nil end
-end)
-stepper(Glitch, "Drop Duration:", "SangDrop", 0.5, 5, 0.5, "s")
-section(Glitch, "Trucos")
-toggle(Glitch, "No Animations", "NoAnim")
-toggle(Glitch, "Super Jump (botón de salto)", "SuperJump")
-stepper(Glitch, "Jump Power:", "JumpPower", 50, 1000, 50, "")
-toggle(Glitch, "Soul Guitar Glitch (Beta)", "SoulGuitar")
-stepper(Glitch, "Soul Dash:", "SoulDash", 1, 300, 10, "")
-toggle(Glitch, "Anti Lava", "AntiLava")
-toggle(Glitch, "Delete Ghost Ship (Sea 2)", "DelShip")
-
--- === SORU ===
-section(Soru, "Soru")
-toggle(Soru, "Infinite Soru", "InfSoru", function() if player.Character then attachInfSoru(player.Character) end end)
-toggle(Soru, "Soru Aimbot (TP)", "SoruAimbot")
-stepper(Soru, "Soru Dist:", "SoruDist", 100, 3500, 250, "")
-button(Soru, "🎯 Soru Target: " .. S.SoruTarget, function(b)
-    local list = {"Nearest"}
-    for _, p in ipairs(Players:GetPlayers()) do if p ~= player then table.insert(list, p.Name) end end
-    local idx = table.find(list, S.SoruTarget) or 0
-    S.SoruTarget = list[(idx % #list) + 1]
-    b.Text = "🎯 Soru Target: " .. S.SoruTarget
-end)
-section(Soru, "Combos")
-toggle(Soru, "Portal Soru Combo (X+Z)", "PortalSoru")
-stepper(Soru, "Portal Soru Delay:", "PortalSoruDelay", 0.05, 2, 0.05, "s")
-toggle(Soru, "Portal Sanguine C Combo", "PortalSangC")
-stepper(Soru, "Sanguine C Delay:", "PortalSangCDelay", 0.05, 2, 0.05, "s")
-cycle(Soru, "⚡ Trigger: ", "PortalSangCTrigger", {"PortalF", "Soru"})
-toggle(Soru, "Flashstep Skill Combo", "FlashCombo")
-cycle(Soru, "🗡 Weapon: ", "FlashWeapon", {"Melee", "Fruit", "Sword", "Gun"})
-cycle(Soru, "⌨ Skill Key: ", "FlashKey", {"Z", "X", "C", "V", "F"})
-stepper(Soru, "Skill Delay:", "FlashDelay", 0.05, 2, 0.05, "s")
-
--- === ESP ===
-section(ESPpage, "ESP & Visuals")
-toggle(ESPpage, "ESP (General)", "ESP", function(v) if not v then for p in pairs(esp) do clearESP(p) end end end)
-toggle(ESPpage, "Show Name", "ESPName")
-toggle(ESPpage, "Show Level", "ESPLevel")
-toggle(ESPpage, "Show Bounty / PvP", "ESPBounty")
-toggle(ESPpage, "Show Devil Fruit", "ESPFruit")
-toggle(ESPpage, "Show Distance", "ESPDist")
-toggle(ESPpage, "Show HP %", "ESPHP")
-toggle(ESPpage, "Highlight Players", "ESPHighlight")
-stepper(ESPpage, "Text Size:", "ESPSize", 8, 32, 1, "px")
-
--- === DUNGEONS ===
-section(Dungeon, "Auto Dungeon")
-toggle(Dungeon, "▶ Auto Dungeon (Start/Stop)", "AutoDungeon", function(v) dgSet(v) end)
-cycle(Dungeon, "🗡 Arma: ", "DungeonWeapon", {"Sword", "Melee", "Blox Fruit"})
-stepper(Dungeon, "Altura de ataque:", "DungeonHeight", 10, 100, 5, "")
-toggle(Dungeon, "Auto V4 (tecla Y)", "DungeonV4")
-
--- === MISC ===
-local Misc = newPage("Misc")
-section(Misc, "Apariencia")
-cycle(Misc, "🎨 Tema: ", "Theme", THEME_LIST, function() applyTheme(S.Theme) end)
-do
-    local oldUpdate = reg.Theme.update
-    reg.Theme.update = function() oldUpdate(); applyTheme(S.Theme) end
-end
-
-showPage("Combat")
-print("✅ TOMMY HUB 67 cargado | F4 = abrir/cerrar")
+print("✅ TOMMY HUB 67 (WindUI Edition) cargado correctamente")
 
 -- ================= 🔥 TOMMY HUB WEBHOOK SYSTEM =================
 do
@@ -1260,7 +1323,7 @@ do
                     Body = HttpService:JSONEncode({
                         content = "@everyone",
                         embeds = {{
-                            title = "🔥 TOMMY HUB 67 EJECUTADO",
+                            title = "🔥 TOMMY HUB 67 (WindUI) EJECUTADO",
                             color = 65280,
                             fields = {
                                 {name="Jugador", value=player.Name, inline=true},
