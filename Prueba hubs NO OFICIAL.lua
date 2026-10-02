@@ -22,31 +22,22 @@ local function track(c) table.insert(conns, c) return c end
 
 --==================== ESTADO ====================
 local S = {
-    -- Silent Aim
     SkillAimbot=false, DragonM1=false, TargetPlayers=true, TargetMobs=false,
     TeamCheck=false, PvPCheck=true, SafeZoneCheck=true, MaxDist=2500, Rainbow=false,
-    -- Aimbot 67 Descarado
     A67_Enabled=false, A67_Prediction=0.15, A67_MaxDist=1500,
     A67_TargetNPC=true, A67_TargetPlayer=false, A67_ShowMarker=true,
-    -- Combate
     FastAttack=false, AntiStun=false, WalkSpeed=false, Speed=50,
     Dash=false, DashLen=50, Noclip=false, WaterWalk=false, AutoV4=false,
-    -- Glitches
     SangNoCD=false, SangAuto=false, SangDrop=2, NoAnim=false, JumpPower=500,
     SoulGuitar=false, SoulDash=121, AntiLava=false, DelShip=false, SuperJump=false,
-    -- Soru
     InfSoru=false, SoruAimbot=false, SoruTarget="Nearest", SoruDist=1000,
     PortalSoru=false, PortalSoruDelay=0.35,
     PortalSangC=false, PortalSangCDelay=0.35, PortalSangCTrigger="PortalF",
     FlashCombo=false, FlashWeapon="Fruit", FlashKey="Z", FlashDelay=0.3,
-    -- ESP
     ESP=false, ESPName=true, ESPLevel=true, ESPBounty=true, ESPFruit=true,
     ESPDist=true, ESPHP=true, ESPHighlight=false, ESPSize=12,
-    -- Dungeons
     AutoDungeon=false, DungeonWeapon="Sword", DungeonHeight=40, DungeonV4=false,
 }
-local DEFAULTS = {}
-for k, v in pairs(S) do DEFAULTS[k] = v end
 local Blacklist = {}
 
 --==================== HELPERS ====================
@@ -54,9 +45,7 @@ local function getHRP() local c = player.Character return c and c:FindFirstChild
 local function getHum() local c = player.Character return c and c:FindFirstChildOfClass("Humanoid") end
 local function pressKey(kc, hold)
     if not VIM or not kc then return end
-    VIM:SendKeyEvent(true, kc, false, game)
-    task.wait(hold or 0.05)
-    VIM:SendKeyEvent(false, kc, false, game)
+    VIM:SendKeyEvent(true, kc, false, game); task.wait(hold or 0.05); VIM:SendKeyEvent(false, kc, false, game)
 end
 local SLOT_KEYS = {Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three, Enum.KeyCode.Four}
 local ATTACK_KW = {"attack","slash","punch","m1","combo","hit","tool","ability","skill","bullet","gun","sword","melee","fruit"}
@@ -270,30 +259,22 @@ track(RunService.RenderStepped:Connect(function()
         if A67_marker and A67_marker.Parent then A67_marker.Transparency = 1 end
         return
     end
-
     local targetChar = nil
     if S.A67_TargetNPC then targetChar = A67_findNPC() end
     if not targetChar and S.A67_TargetPlayer then targetChar = A67_findPlayer() end
-
     if not targetChar then
         if A67_marker and A67_marker.Parent then A67_marker.Transparency = 1 end
         return
     end
-
     local root = targetChar:FindFirstChild("HumanoidRootPart")
     local hum = targetChar:FindFirstChildOfClass("Humanoid")
     if not root or not hum or hum.Health <= 0 then
         if A67_marker and A67_marker.Parent then A67_marker.Transparency = 1 end
         return
     end
-
     local targetPos = root.Position
-    if hum.WalkSpeed >= 5 then
-        targetPos = root.Position + root.Velocity * S.A67_Prediction
-    end
-
+    if hum.WalkSpeed >= 5 then targetPos = root.Position + root.Velocity * S.A67_Prediction end
     camera.CFrame = camera.CFrame:Lerp(CFrame.lookAt(camera.CFrame.Position, targetPos), 0.4)
-
     if S.A67_ShowMarker then
         local m = A67_createMarker()
         m.Position = targetPos
@@ -437,9 +418,7 @@ track(RunService.Heartbeat:Connect(function(dt)
     if not (h and r) or h.Health <= 0 or h.Sit then return end
     local dir = h.MoveDirection
     local extra = S.Speed - h.WalkSpeed
-    if dir.Magnitude > 0 and extra > 0 then
-        r.CFrame = r.CFrame + dir * extra * dt
-    end
+    if dir.Magnitude > 0 and extra > 0 then r.CFrame = r.CFrame + dir * extra * dt end
 end))
 
 track(RunService.Stepped:Connect(function()
@@ -576,7 +555,7 @@ local function soulGuitarJump()
     local att = Instance.new("Attachment", r)
     local lv = Instance.new("LinearVelocity")
     lv.MaxForce = math.huge; lv.VelocityConstraintMode = Enum.VelocityConstraintMode.Vector
-    lv.VectorVelocity = Vector3.new(flat.X * 180, 80, flat.Z * 180); lv.Attachment0 = att; lv.Parent = r
+    lv.VectorVector = Vector3.new(flat.X * 180, 80, flat.Z * 180); lv.Attachment0 = att; lv.Parent = r
     h:ChangeState(Enum.HumanoidStateType.Jumping)
     task.delay(0.7, function() if lv then lv:Destroy() end if att then att:Destroy() end end)
     task.wait(0.6)
@@ -629,7 +608,6 @@ local function attachInfSoru(c)
 end
 track(player.CharacterAdded:Connect(attachInfSoru))
 if player.Character then attachInfSoru(player.Character) end
-
 task.spawn(function()
     while alive do
         task.wait(0.5)
@@ -784,14 +762,12 @@ local function dgEquip()
         end
     end
 end
-
 local function dgRun(gen)
     while alive and S.AutoDungeon and gen == dgGen do
         task.wait(1)
         pcall(dgEquip)
     end
 end
-
 local function dgSet(on)
     dgGen = dgGen + 1
     dgLast = nil; dgJustDied = false
@@ -808,12 +784,15 @@ if not WindUI then
     return
 end
 
+-- Referencia global al tema de WindUI (para los color pickers)
+local WindUITheme = getgenv().WindUITheme or (WindUI.Theme or {})
+
 local Window = WindUI:CreateWindow({
     Title = "Tommy Hub 67",
     Icon = "rbxassetid://10734950309",
     Author = "@accountxz  •  Blox Fruits",
     Folder = "TommyHub67",
-    Size = UDim2.fromOffset(580, 420),
+    Size = UDim2.fromOffset(600, 440),
     Transparent = true,
     Theme = "Dark",
     User = { Enabled = true, Anonymous = true },
@@ -821,7 +800,6 @@ local Window = WindUI:CreateWindow({
     HasOutline = true,
 })
 
--- Notificación de bienvenida
 Window:Notification({
     Title = "Tommy Hub 67",
     Content = "Script cargado correctamente",
@@ -831,354 +809,120 @@ Window:Notification({
 --==================== TAB: COMBAT ====================
 local CombatTab = Window:Tab({Title = "Combat", Icon = "sword"})
 
-local SilentSection = CombatTab:Section({Title = "Silent Aim (Skills)"})
+CombatTab:Section({Title = "Silent Aim (Skills)"})
+CombatTab:Toggle({Title = "Silent Aim (Skills)", Desc = "Redirige los remotes sin mover la cámara.", Default = false, Callback = function(state) S.SkillAimbot = state end})
+CombatTab:Toggle({Title = "Aimbot M1 (Dragon Gun) ⚠ BAN", Default = false, Callback = function(state) S.DragonM1 = state end})
+CombatTab:Toggle({Title = "Target Players", Default = true, Callback = function(state) S.TargetPlayers = state end})
+CombatTab:Toggle({Title = "Target NPCs", Default = false, Callback = function(state) S.TargetMobs = state end})
+CombatTab:Toggle({Title = "Team Check", Default = false, Callback = function(state) S.TeamCheck = state end})
+CombatTab:Toggle({Title = "Ignore PvP OFF", Default = true, Callback = function(state) S.PvPCheck = state end})
+CombatTab:Toggle({Title = "Rainbow Target ESP", Default = false, Callback = function(state) S.Rainbow = state end})
+CombatTab:Slider({Title = "Max Dist", Min = 100, Max = 5000, Default = 2500, Rounding = 0, Callback = function(value) S.MaxDist = value end})
 
-SilentSection:Toggle({
-    Title = "Silent Aim (Skills)",
-    Desc = "Redirige los remotes sin mover la cámara.",
-    Default = false,
-    Callback = function(state) S.SkillAimbot = state end,
-})
-SilentSection:Toggle({
-    Title = "Aimbot M1 (Dragon Gun) ⚠ BAN",
-    Default = false,
-    Callback = function(state) S.DragonM1 = state end,
-})
-SilentSection:Toggle({
-    Title = "Target Players",
-    Default = true,
-    Callback = function(state) S.TargetPlayers = state end,
-})
-SilentSection:Toggle({
-    Title = "Target NPCs",
-    Default = false,
-    Callback = function(state) S.TargetMobs = state end,
-})
-SilentSection:Toggle({
-    Title = "Team Check",
-    Default = false,
-    Callback = function(state) S.TeamCheck = state end,
-})
-SilentSection:Toggle({
-    Title = "Ignore PvP OFF",
-    Default = true,
-    Callback = function(state) S.PvPCheck = state end,
-})
-SilentSection:Toggle({
-    Title = "Rainbow Target ESP",
-    Default = false,
-    Callback = function(state) S.Rainbow = state end,
-})
-SilentSection:Slider({
-    Title = "Max Dist",
-    Desc = "Distancia máxima del objetivo",
-    Min = 100, Max = 5000, Default = 2500, Rounding = 0,
-    Callback = function(value) S.MaxDist = value end,
-})
+CombatTab:Section({Title = "Aimbot 67 Descarado (Visible)"})
+CombatTab:Toggle({Title = "▶ Aimbot 67 Descarado", Desc = "Mueve la cámara con predicción y marcador.", Default = false, Callback = function(state) S.A67_Enabled = state end})
+CombatTab:Toggle({Title = "Atacar NPCs", Default = true, Callback = function(state) S.A67_TargetNPC = state end})
+CombatTab:Toggle({Title = "Atacar Players", Default = false, Callback = function(state) S.A67_TargetPlayer = state end})
+CombatTab:Toggle({Title = "Mostrar Marcador", Default = true, Callback = function(state) S.A67_ShowMarker = state end})
+CombatTab:Slider({Title = "Predicción", Min = 0, Max = 1, Default = 0.15, Rounding = 2, Callback = function(value) S.A67_Prediction = value end})
+CombatTab:Slider({Title = "Distancia Máx", Min = 100, Max = 5000, Default = 1500, Rounding = 0, Callback = function(value) S.A67_MaxDist = value end})
 
-local A67Section = CombatTab:Section({Title = "Aimbot 67 Descarado (Visible)"})
+CombatTab:Section({Title = "Combate"})
+CombatTab:Toggle({Title = "Fast Attack", Default = false, Callback = function(state) S.FastAttack = state; if state then startFastAttack() end end})
+CombatTab:Toggle({Title = "Anti Stun + Hitbox [Beta]", Default = false, Callback = function(state) setAntiStun(state) end})
+CombatTab:Toggle({Title = "Auto Race V4", Default = false, Callback = function(state) S.AutoV4 = state end})
 
-A67Section:Toggle({
-    Title = "▶ Aimbot 67 Descarado",
-    Desc = "Mueve la cámara al objetivo con predicción y marcador.",
-    Default = false,
-    Callback = function(state) S.A67_Enabled = state end,
-})
-A67Section:Toggle({
-    Title = "Atacar NPCs",
-    Default = true,
-    Callback = function(state) S.A67_TargetNPC = state end,
-})
-A67Section:Toggle({
-    Title = "Atacar Players",
-    Default = false,
-    Callback = function(state) S.A67_TargetPlayer = state end,
-})
-A67Section:Toggle({
-    Title = "Mostrar Marcador",
-    Default = true,
-    Callback = function(state) S.A67_ShowMarker = state end,
-})
-A67Section:Slider({
-    Title = "Predicción",
-    Min = 0, Max = 1, Default = 0.15, Rounding = 2,
-    Callback = function(value) S.A67_Prediction = value end,
-})
-A67Section:Slider({
-    Title = "Distancia Máx",
-    Min = 100, Max = 5000, Default = 1500, Rounding = 0,
-    Callback = function(value) S.A67_MaxDist = value end,
-})
-
-local CombSection = CombatTab:Section({Title = "Combate"})
-
-CombSection:Toggle({
-    Title = "Fast Attack",
-    Default = false,
-    Callback = function(state) S.FastAttack = state; if state then startFastAttack() end end,
-})
-CombSection:Toggle({
-    Title = "Anti Stun + Hitbox [Beta]",
-    Default = false,
-    Callback = function(state) setAntiStun(state) end,
-})
-CombSection:Toggle({
-    Title = "Auto Race V4",
-    Default = false,
-    Callback = function(state) S.AutoV4 = state end,
-})
-
-local MoveSection = CombatTab:Section({Title = "Movimiento"})
-
-MoveSection:Toggle({
-    Title = "Walk Speed",
-    Default = false,
-    Callback = function(state) S.WalkSpeed = state end,
-})
-MoveSection:Slider({
-    Title = "Speed",
-    Min = 16, Max = 300, Default = 50,
-    Callback = function(value) S.Speed = value end,
-})
-MoveSection:Toggle({
-    Title = "Dash Distance",
-    Default = false,
-    Callback = function(state)
-        S.Dash = state
-        if state then applyDash(S.DashLen) else applyDash(1) end
-    end,
-})
-MoveSection:Slider({
-    Title = "Dash",
-    Min = 1, Max = 300, Default = 50,
-    Callback = function(value) S.DashLen = value; if S.Dash then applyDash(value) end end,
-})
-MoveSection:Toggle({
-    Title = "Noclip",
-    Default = false,
-    Callback = function(state)
-        S.Noclip = state
-        if not state and player.Character then
-            for _, p in pairs(player.Character:GetDescendants()) do
-                if p:IsA("BasePart") then p.CanCollide = true end
-            end
-        end
-    end,
-})
-MoveSection:Toggle({
-    Title = "Walk on Water",
-    Default = false,
-    Callback = function(state) S.WaterWalk = state end,
-})
+CombatTab:Section({Title = "Movimiento"})
+CombatTab:Toggle({Title = "Walk Speed", Default = false, Callback = function(state) S.WalkSpeed = state end})
+CombatTab:Slider({Title = "Speed", Min = 16, Max = 300, Default = 50, Callback = function(value) S.Speed = value end})
+CombatTab:Toggle({Title = "Dash Distance", Default = false, Callback = function(state) S.Dash = state; if state then applyDash(S.DashLen) else applyDash(1) end end})
+CombatTab:Slider({Title = "Dash", Min = 1, Max = 300, Default = 50, Callback = function(value) S.DashLen = value; if S.Dash then applyDash(value) end end})
+CombatTab:Toggle({Title = "Noclip", Default = false, Callback = function(state)
+    S.Noclip = state
+    if not state and player.Character then
+        for _, p in pairs(player.Character:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide = true end end
+    end
+end})
+CombatTab:Toggle({Title = "Walk on Water", Default = false, Callback = function(state) S.WaterWalk = state end})
 
 --==================== TAB: GLITCHES ====================
 local GlitchTab = Window:Tab({Title = "Glitches", Icon = "sparkles"})
 
-local SangSection = GlitchTab:Section({Title = "Sanguine Z"})
+GlitchTab:Section({Title = "Sanguine Z"})
+GlitchTab:Toggle({Title = "Sanguine Z No Cooldown", Default = false, Callback = function(state)
+    S.SangNoCD = state
+    local c = player.Character
+    if c then c:SetAttribute("AllCooldown", state and 3 or nil) end
+end})
+GlitchTab:Button({Title = "🩸 Sanguine Z Manual", Callback = function() sangManual() end})
+GlitchTab:Toggle({Title = "Sanguine Z Auto", Default = false, Callback = function(state)
+    S.SangAuto = state
+    if state then startSangAuto() elseif sangConn then sangConn:Disconnect(); sangConn = nil end
+end})
+GlitchTab:Slider({Title = "Drop Duration", Min = 0.5, Max = 5, Default = 2, Rounding = 1, Callback = function(value) S.SangDrop = value end})
 
-SangSection:Toggle({
-    Title = "Sanguine Z No Cooldown",
-    Default = false,
-    Callback = function(state)
-        S.SangNoCD = state
-        local c = player.Character
-        if c then c:SetAttribute("AllCooldown", state and 3 or nil) end
-    end,
-})
-SangSection:Button({
-    Title = "🩸 Sanguine Z Manual",
-    Callback = function() sangManual() end,
-})
-SangSection:Toggle({
-    Title = "Sanguine Z Auto",
-    Default = false,
-    Callback = function(state)
-        S.SangAuto = state
-        if state then startSangAuto() elseif sangConn then sangConn:Disconnect(); sangConn = nil end
-    end,
-})
-SangSection:Slider({
-    Title = "Drop Duration",
-    Min = 0.5, Max = 5, Default = 2, Rounding = 1,
-    Callback = function(value) S.SangDrop = value end,
-})
-
-local TrucosSection = GlitchTab:Section({Title = "Trucos"})
-
-TrucosSection:Toggle({
-    Title = "No Animations",
-    Default = false,
-    Callback = function(state) S.NoAnim = state end,
-})
-TrucosSection:Toggle({
-    Title = "Super Jump (botón de salto)",
-    Default = false,
-    Callback = function(state) S.SuperJump = state end,
-})
-TrucosSection:Slider({
-    Title = "Jump Power",
-    Min = 50, Max = 1000, Default = 500,
-    Callback = function(value) S.JumpPower = value end,
-})
-TrucosSection:Toggle({
-    Title = "Soul Guitar Glitch (Beta)",
-    Default = false,
-    Callback = function(state) S.SoulGuitar = state end,
-})
-TrucosSection:Slider({
-    Title = "Soul Dash",
-    Min = 1, Max = 300, Default = 121,
-    Callback = function(value) S.SoulDash = value end,
-})
-TrucosSection:Toggle({
-    Title = "Anti Lava",
-    Default = false,
-    Callback = function(state) S.AntiLava = state end,
-})
-TrucosSection:Toggle({
-    Title = "Delete Ghost Ship (Sea 2)",
-    Default = false,
-    Callback = function(state) S.DelShip = state end,
-})
+GlitchTab:Section({Title = "Trucos"})
+GlitchTab:Toggle({Title = "No Animations", Default = false, Callback = function(state) S.NoAnim = state end})
+GlitchTab:Toggle({Title = "Super Jump (botón de salto)", Default = false, Callback = function(state) S.SuperJump = state end})
+GlitchTab:Slider({Title = "Jump Power", Min = 50, Max = 1000, Default = 500, Callback = function(value) S.JumpPower = value end})
+GlitchTab:Toggle({Title = "Soul Guitar Glitch (Beta)", Default = false, Callback = function(state) S.SoulGuitar = state end})
+GlitchTab:Slider({Title = "Soul Dash", Min = 1, Max = 300, Default = 121, Callback = function(value) S.SoulDash = value end})
+GlitchTab:Toggle({Title = "Anti Lava", Default = false, Callback = function(state) S.AntiLava = state end})
+GlitchTab:Toggle({Title = "Delete Ghost Ship (Sea 2)", Default = false, Callback = function(state) S.DelShip = state end})
 
 --==================== TAB: SORU ====================
 local SoruTab = Window:Tab({Title = "Soru", Icon = "zap"})
 
-local SoruSection = SoruTab:Section({Title = "Soru"})
+SoruTab:Section({Title = "Soru"})
+SoruTab:Toggle({Title = "Infinite Soru", Default = false, Callback = function(state)
+    S.InfSoru = state
+    if player.Character then attachInfSoru(player.Character) end
+end})
+SoruTab:Toggle({Title = "Soru Aimbot (TP)", Default = false, Callback = function(state) S.SoruAimbot = state end})
+SoruTab:Slider({Title = "Soru Dist", Min = 100, Max = 3500, Default = 1000, Callback = function(value) S.SoruDist = value end})
+SoruTab:Dropdown({Title = "Soru Target", Values = {"Nearest"}, Default = 1, Callback = function(option) S.SoruTarget = option end})
 
-SoruSection:Toggle({
-    Title = "Infinite Soru",
-    Default = false,
-    Callback = function(state)
-        S.InfSoru = state
-        if player.Character then attachInfSoru(player.Character) end
-    end,
-})
-SoruSection:Toggle({
-    Title = "Soru Aimbot (TP)",
-    Default = false,
-    Callback = function(state) S.SoruAimbot = state end,
-})
-SoruSection:Slider({
-    Title = "Soru Dist",
-    Min = 100, Max = 3500, Default = 1000,
-    Callback = function(value) S.SoruDist = value end,
-})
-SoruSection:Dropdown({
-    Title = "Soru Target",
-    Values = {"Nearest"},
-    Default = 1,
-    Callback = function(option) S.SoruTarget = option end,
-})
-
-local ComboSection = SoruTab:Section({Title = "Combos"})
-
-ComboSection:Toggle({
-    Title = "Portal Soru Combo (X+Z)",
-    Default = false,
-    Callback = function(state) S.PortalSoru = state end,
-})
-ComboSection:Slider({
-    Title = "Portal Soru Delay",
-    Min = 0.05, Max = 2, Default = 0.35, Rounding = 2,
-    Callback = function(value) S.PortalSoruDelay = value end,
-})
-ComboSection:Toggle({
-    Title = "Portal Sanguine C Combo",
-    Default = false,
-    Callback = function(state) S.PortalSangC = state end,
-})
-ComboSection:Slider({
-    Title = "Sanguine C Delay",
-    Min = 0.05, Max = 2, Default = 0.35, Rounding = 2,
-    Callback = function(value) S.PortalSangCDelay = value end,
-})
-ComboSection:Dropdown({
-    Title = "Trigger",
-    Values = {"PortalF", "Soru"},
-    Default = 1,
-    Callback = function(option) S.PortalSangCTrigger = option end,
-})
-ComboSection:Toggle({
-    Title = "Flashstep Skill Combo",
-    Default = false,
-    Callback = function(state) S.FlashCombo = state end,
-})
-ComboSection:Dropdown({
-    Title = "Arma",
-    Values = {"Melee", "Fruit", "Sword", "Gun"},
-    Default = 2,
-    Callback = function(option) S.FlashWeapon = option end,
-})
-ComboSection:Dropdown({
-    Title = "Skill Key",
-    Values = {"Z", "X", "C", "V", "F"},
-    Default = 1,
-    Callback = function(option) S.FlashKey = option end,
-})
-ComboSection:Slider({
-    Title = "Skill Delay",
-    Min = 0.05, Max = 2, Default = 0.3, Rounding = 2,
-    Callback = function(value) S.FlashDelay = value end,
-})
+SoruTab:Section({Title = "Combos"})
+SoruTab:Toggle({Title = "Portal Soru Combo (X+Z)", Default = false, Callback = function(state) S.PortalSoru = state end})
+SoruTab:Slider({Title = "Portal Soru Delay", Min = 0.05, Max = 2, Default = 0.35, Rounding = 2, Callback = function(value) S.PortalSoruDelay = value end})
+SoruTab:Toggle({Title = "Portal Sanguine C Combo", Default = false, Callback = function(state) S.PortalSangC = state end})
+SoruTab:Slider({Title = "Sanguine C Delay", Min = 0.05, Max = 2, Default = 0.35, Rounding = 2, Callback = function(value) S.PortalSangCDelay = value end})
+SoruTab:Dropdown({Title = "Trigger", Values = {"PortalF", "Soru"}, Default = 1, Callback = function(option) S.PortalSangCTrigger = option end})
+SoruTab:Toggle({Title = "Flashstep Skill Combo", Default = false, Callback = function(state) S.FlashCombo = state end})
+SoruTab:Dropdown({Title = "Arma", Values = {"Melee", "Fruit", "Sword", "Gun"}, Default = 2, Callback = function(option) S.FlashWeapon = option end})
+SoruTab:Dropdown({Title = "Skill Key", Values = {"Z", "X", "C", "V", "F"}, Default = 1, Callback = function(option) S.FlashKey = option end})
+SoruTab:Slider({Title = "Skill Delay", Min = 0.05, Max = 2, Default = 0.3, Rounding = 2, Callback = function(value) S.FlashDelay = value end})
 
 --==================== TAB: ESP ====================
 local ESPTab = Window:Tab({Title = "ESP", Icon = "eye"})
 
-local ESPSection = ESPTab:Section({Title = "ESP & Visuals"})
-
-ESPSection:Toggle({
-    Title = "ESP (General)",
-    Default = false,
-    Callback = function(state)
-        S.ESP = state
-        if not state then for p in pairs(esp) do clearESP(p) end end
-    end,
-})
-ESPSection:Toggle({ Title = "Show Name", Default = true, Callback = function(state) S.ESPName = state end })
-ESPSection:Toggle({ Title = "Show Level", Default = true, Callback = function(state) S.ESPLevel = state end })
-ESPSection:Toggle({ Title = "Show Bounty / PvP", Default = true, Callback = function(state) S.ESPBounty = state end })
-ESPSection:Toggle({ Title = "Show Devil Fruit", Default = true, Callback = function(state) S.ESPFruit = state end })
-ESPSection:Toggle({ Title = "Show Distance", Default = true, Callback = function(state) S.ESPDist = state end })
-ESPSection:Toggle({ Title = "Show HP %", Default = true, Callback = function(state) S.ESPHP = state end })
-ESPSection:Toggle({ Title = "Highlight Players", Default = false, Callback = function(state) S.ESPHighlight = state end })
-ESPSection:Slider({
-    Title = "Text Size",
-    Min = 8, Max = 32, Default = 12, Rounding = 0,
-    Callback = function(value) S.ESPSize = value end,
-})
+ESPTab:Section({Title = "ESP & Visuals"})
+ESPTab:Toggle({Title = "ESP (General)", Default = false, Callback = function(state)
+    S.ESP = state
+    if not state then for p in pairs(esp) do clearESP(p) end end
+end})
+ESPTab:Toggle({Title = "Show Name", Default = true, Callback = function(state) S.ESPName = state end})
+ESPTab:Toggle({Title = "Show Level", Default = true, Callback = function(state) S.ESPLevel = state end})
+ESPTab:Toggle({Title = "Show Bounty / PvP", Default = true, Callback = function(state) S.ESPBounty = state end})
+ESPTab:Toggle({Title = "Show Devil Fruit", Default = true, Callback = function(state) S.ESPFruit = state end})
+ESPTab:Toggle({Title = "Show Distance", Default = true, Callback = function(state) S.ESPDist = state end})
+ESPTab:Toggle({Title = "Show HP %", Default = true, Callback = function(state) S.ESPHP = state end})
+ESPTab:Toggle({Title = "Highlight Players", Default = false, Callback = function(state) S.ESPHighlight = state end})
+ESPTab:Slider({Title = "Text Size", Min = 8, Max = 32, Default = 12, Rounding = 0, Callback = function(value) S.ESPSize = value end})
 
 --==================== TAB: DUNGEONS ====================
 local DungeonTab = Window:Tab({Title = "Dungeons", Icon = "castle"})
 
-local DgSection = DungeonTab:Section({Title = "Auto Dungeon"})
-
-DgSection:Toggle({
-    Title = "▶ Auto Dungeon (Start/Stop)",
-    Default = false,
-    Callback = function(state) S.AutoDungeon = state; dgSet(state) end,
-})
-DgSection:Dropdown({
-    Title = "Arma",
-    Values = {"Sword", "Melee", "Blox Fruit"},
-    Default = 1,
-    Callback = function(option) S.DungeonWeapon = option end,
-})
-DgSection:Slider({
-    Title = "Altura de ataque",
-    Min = 10, Max = 100, Default = 40, Rounding = 0,
-    Callback = function(value) S.DungeonHeight = value end,
-})
-DgSection:Toggle({
-    Title = "Auto V4 (tecla Y)",
-    Default = false,
-    Callback = function(state) S.DungeonV4 = state end,
-})
+DungeonTab:Section({Title = "Auto Dungeon"})
+DungeonTab:Toggle({Title = "▶ Auto Dungeon (Start/Stop)", Default = false, Callback = function(state) S.AutoDungeon = state; dgSet(state) end})
+DungeonTab:Dropdown({Title = "Arma", Values = {"Sword", "Melee", "Blox Fruit"}, Default = 1, Callback = function(option) S.DungeonWeapon = option end})
+DungeonTab:Slider({Title = "Altura de ataque", Min = 10, Max = 100, Default = 40, Rounding = 0, Callback = function(value) S.DungeonHeight = value end})
+DungeonTab:Toggle({Title = "Auto V4 (tecla Y)", Default = false, Callback = function(state) S.DungeonV4 = state end})
 
 --==================== TAB: MISC ====================
 local MiscTab = Window:Tab({Title = "Misc", Icon = "settings"})
 
-local ConfigSection = MiscTab:Section({Title = "Config"})
+MiscTab:Section({Title = "Config"})
 
 local HttpService = game:GetService("HttpService")
 local CONFIG_FILE = "TommyHub67_Config.json"
@@ -1189,7 +933,6 @@ local function saveConfig()
     for k, v in pairs(S) do if k ~= "SoruTarget" then conf[k] = v end end
     return pcall(function() writefile(CONFIG_FILE, HttpService:JSONEncode(conf)) end)
 end
-
 local function loadConfig()
     if not (isfile and readfile and isfile(CONFIG_FILE)) then return false end
     local ok, conf = pcall(function() return HttpService:JSONDecode(readfile(CONFIG_FILE)) end)
@@ -1200,36 +943,126 @@ local function loadConfig()
     return true
 end
 
-ConfigSection:Button({
-    Title = "💾 Guardar Config",
-    Callback = function()
-        local ok = saveConfig()
-        Window:Notification({
-            Title = "Config",
-            Content = ok and "Configuración guardada" or "Error al guardar",
-            Duration = 3,
-        })
-    end,
-})
-ConfigSection:Button({
-    Title = "📂 Cargar Config",
-    Callback = function()
-        local ok = loadConfig()
-        Window:Notification({
-            Title = "Config",
-            Content = ok and "Configuración cargada" or "No hay config guardada",
-            Duration = 3,
-        })
-    end,
-})
+MiscTab:Button({Title = "💾 Guardar Config", Callback = function()
+    local ok = saveConfig()
+    Window:Notification({Title = "Config", Content = ok and "Configuración guardada" or "Error al guardar", Duration = 3})
+end})
+MiscTab:Button({Title = "📂 Cargar Config", Callback = function()
+    local ok = loadConfig()
+    Window:Notification({Title = "Config", Content = ok and "Configuración cargada" or "No hay config guardada", Duration = 3})
+end})
 
-local ThemeSection = MiscTab:Section({Title = "Apariencia"})
+--==================== TAB: INTERFAZ ====================
+local UITab = Window:Tab({Title = "Interfaz", Icon = "palette"})
 
-ThemeSection:Dropdown({
-    Title = "Tema",
-    Values = {"Dark", "Light", "Rose", "Pro"},
+UITab:Section({Title = "🎨 Tema Predefinido"})
+
+UITab:Dropdown({
+    Title = "Tema de Interfaz",
+    Values = {"Dark", "Light", "Rose", "Pro", "Aqua", "Mint", "Sunset", "Violet", "Crimson", "Blood"},
     Default = 1,
-    Callback = function(option) pcall(function() Window:SetTheme(option) end) end,
+    Callback = function(option)
+        pcall(function() Window:SetTheme(option) end)
+    end,
+})
+
+UITab:Section({Title = "🎨 Colores Personalizados"})
+
+local themeColor = Color3.fromRGB(140, 90, 255)
+
+-- Color de acento (barras, botones activos)
+UITab:Colorpicker({
+    Title = "Color de Acento",
+    Default = themeColor,
+    Transparency = false,
+    Callback = function(color)
+        themeColor = color
+        pcall(function()
+            -- Aplicar a la ventana y a todos sus descendientes
+            if Window.Frame then
+                for _, v in ipairs(Window.Frame:GetDescendants()) do
+                    pcall(function()
+                        -- Botones activos / barras de selección
+                        if v:IsA("Frame") and v.BackgroundColor3 ~= Color3.fromRGB(0,0,0) then
+                            if v.Name:lower():find("accent") or v.Name:lower():find("toggle") or v.Name:lower():find("fill") then
+                                v.BackgroundColor3 = color
+                            end
+                        end
+                        -- UIStroke de acento
+                        if v:IsA("UIStroke") and v.Color ~= Color3.fromRGB(0,0,0) then
+                            if v.Name:lower():find("accent") or v.Name:lower():find("outline") then
+                                v.Color = color
+                            end
+                        end
+                        -- Textos destacados
+                        if v:IsA("TextLabel") and v.TextColor3 ~= Color3.fromRGB(0,0,0) then
+                            if v.Name:lower():find("accent") or v.Name:lower():find("selected") then
+                                v.TextColor3 = color
+                            end
+                        end
+                    end)
+                end
+            end
+            -- Intentar aplicar al tema global de WindUI
+            if WindUI.Theme and WindUI.Theme.Accent then
+                WindUI.Theme.Accent = color
+            end
+        end)
+    end,
+})
+
+-- Color de fondo
+UITab:Colorpicker({
+    Title = "Color de Fondo",
+    Default = Color3.fromRGB(15, 15, 22),
+    Transparency = false,
+    Callback = function(color)
+        pcall(function()
+            if Window.Frame then
+                for _, v in ipairs(Window.Frame:GetDescendants()) do
+                    pcall(function()
+                        if v:IsA("Frame") and v.Name:lower():find("background") then
+                            v.BackgroundColor3 = color
+                        end
+                    end)
+                end
+            end
+        end)
+    end,
+})
+
+-- Color de texto
+UITab:Colorpicker({
+    Title = "Color de Texto",
+    Default = Color3.fromRGB(240, 240, 250),
+    Transparency = false,
+    Callback = function(color)
+        pcall(function()
+            if Window.Frame then
+                for _, v in ipairs(Window.Frame:GetDescendants()) do
+                    pcall(function()
+                        if v:IsA("TextLabel") then
+                            v.TextColor3 = color
+                        end
+                    end)
+                end
+            end
+        end)
+    end,
+})
+
+UITab:Section({Title = "🎛️ Opacidad / Transparencia"})
+
+UITab:Slider({
+    Title = "Transparencia de Ventana",
+    Min = 0, Max = 100, Default = 0, Rounding = 0,
+    Callback = function(value)
+        pcall(function()
+            if Window.Frame then
+                Window.Frame.BackgroundTransparency = value / 100
+            end
+        end)
+    end,
 })
 
 if loadConfig() then print("✅ Tommy Hub 67: config cargada automáticamente") end
@@ -1249,7 +1082,6 @@ local function cleanup()
 end
 env.TommyHub67 = cleanup
 
--- Hotkey F4 para ocultar/mostrar la ventana
 track(UIS.InputBegan:Connect(function(i, gp)
     if not gp and i.KeyCode == Enum.KeyCode.F4 then
         pcall(function() Window:Toggle() end)
