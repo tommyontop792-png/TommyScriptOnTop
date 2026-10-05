@@ -1,3 +1,52 @@
+-- TOMMY HUB • Auto Bounty (independiente, con interfaz propia)
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
+local Lighting = game:GetService("Lighting")
+local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
+if type(getgenv) ~= "function" then getgenv = function() return _G end end
+
+if _G.TommyBountyCleanup then pcall(_G.TommyBountyCleanup) end
+local SESSION = tick()
+_G.TommyBountySession = SESSION
+local function isCurrentSession() return _G.TommyBountySession == SESSION end
+
+local CurrentLang = "EN"
+local Settings = { autoBuso = true }
+local FeatureStates = { AutoBuso = true, AutoV4Bounty = false, WalkOnWater = false }
+local FeatureCallbacks = {}
+local TranslatableUI = {}
+local Tommy = { UI = {}, Runtime = {} }
+local targetNameBox, earnedBox, toastLbl
+
+function Tommy.Runtime.number(value, fallback, minimum, maximum)
+    local n = tonumber(value)
+    if not n or n ~= n or n == math.huge or n == -math.huge then n = fallback end
+    return math.clamp(n, minimum, maximum)
+end
+local attackBudget = {}
+function Tommy.TakeAttackBudget(channel, delay)
+    local now = os.clock()
+    if now < (attackBudget[channel] or 0) then return false end
+    attackBudget[channel] = now + math.clamp(tonumber(delay) or 0.15, 0.12, 1)
+    return true
+end
+function Tommy.ReportIssue(feature, err) warn("[Tommy Hub / " .. tostring(feature) .. "] " .. tostring(err)) end
+
+local function notifyToggle(text, state)
+    print("[Tommy Hub] " .. tostring(text))
+    pcall(function()
+        if toastLbl and toastLbl.Parent then
+            toastLbl.Text = tostring(text)
+            toastLbl.TextColor3 = state and Color3.fromRGB(120, 235, 170) or Color3.fromRGB(255, 170, 170)
+        end
+    end)
+end
+
 do
     local abToggleBtnRef = nil
     local abStatusLblRef = nil
@@ -2780,54 +2829,117 @@ end
         notifyToggle("Tommy Auto Bounty Started!", true)
     end
     getgenv().RunTommyAutoBountyExact = runTommyAutoBountyExact
-    local AutoBountyPage = createScrollPage("AutoBounty_Page", 980)
-    local c1 = makeCard(AutoBountyPage, "Auto Bounty", "Auto Bounty", 146, 2)
-    abStatusLblRef = Instance.new("TextLabel", c1)
-    abStatusLblRef.Size = UDim2.new(1, -20, 0, 22)
-    abStatusLblRef.Position = UDim2.new(0, 10, 0, 24)
-    abStatusLblRef.BackgroundTransparency = 1
-    abStatusLblRef.Font = Enum.Font.GothamBold
-    abStatusLblRef.TextSize = 12.5
-    abStatusLblRef.TextColor3 = Color3.fromRGB(190, 190, 205)
-    abStatusLblRef.TextXAlignment = Enum.TextXAlignment.Left
-    abStatusLblRef.Text = (CurrentLang == "ES") and "Estado: Inactivo / Detenido" or "Status: Inactive / Stopped"
-    table.insert(TranslatableUI, {
-        label = abStatusLblRef,
-        en = "Status: Inactive / Stopped",
-        es = "Estado: Inactivo / Detenido"
-    })
-    abToggleBtnRef = createActionButton(c1, "Start Auto Bounty", "Iniciar Auto Bounty", UDim2.new(1, -20, 0, 42), UDim2.new(0, 10, 0, 50), function()
-        if getgenv().TommyAutoBountyRunning then
-            stopTommyAutoBountyExact()
-        else
-            runTommyAutoBountyExact()
+
+    -- ================= INTERFAZ =================
+    local ACCENT = Color3.fromRGB(0, 170, 255)
+    local function new(class, props, parent)
+        local o = Instance.new(class)
+        for k, v in pairs(props) do o[k] = v end
+        if parent then o.Parent = parent end
+        return o
+    end
+    local function corner(o, r) new("UICorner", { CornerRadius = UDim.new(0, r or 8) }, o) end
+    local function stroke(o, c, th)
+        return new("UIStroke", { Color = c, Thickness = th or 1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, o)
+    end
+
+    for _, p in ipairs({ pcall(function() return gethui() end) and gethui() or nil, LocalPlayer:FindFirstChild("PlayerGui") }) do
+        local old = p and p:FindFirstChild("Tommy_BountyGui")
+        if old then old:Destroy() end
+    end
+    local gui = new("ScreenGui", { Name = "Tommy_BountyGui", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 9999 })
+    do
+        local ok = false
+        if gethui then ok = pcall(function() gui.Parent = gethui() end) end
+        if not ok or not gui.Parent then
+            ok = pcall(function() gui.Parent = game:GetService("CoreGui") end)
         end
-    end)
-    abToggleBtnRef.BackgroundColor3 = Color3.fromRGB(24, 24, 30)
-    abToggleBtnRef.TextColor3 = Color3.fromRGB(240, 240, 250)
-    abToggleBtnStroke = Instance.new("UIStroke", abToggleBtnRef)
-    abToggleBtnStroke.Color = Color3.fromRGB(55, 55, 68)
-    local subRow = Instance.new("Frame", c1)
-    subRow.Size = UDim2.new(1, -20, 0, 32)
-    subRow.Position = UDim2.new(0, 10, 0, 100)
-    subRow.BackgroundTransparency = 1
-    local btnW = UDim2.new(0.315, 0, 1, 0)
-    local skipBtn = createActionButton(subRow, "Skip Target", "Saltar Objetivo", btnW, UDim2.new(0, 0, 0, 0), function()
-        if getgenv().SkipPlayer then
-            pcall(function() getgenv().SkipPlayer(true) end)
-            notifyToggle((CurrentLang == "ES") and "Objetivo saltado!" or "Target skipped!", true)
-        else
-            notifyToggle((CurrentLang == "ES") and "Auto Bounty inactivo" or "Auto Bounty not running", false)
+        if not ok or not gui.Parent then gui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+    end
+
+    local W, H = 340, 478
+    local main = new("Frame", {
+        Size = UDim2.fromOffset(W, H), Position = UDim2.new(0.5, -W / 2, 0.5, -H / 2),
+        BackgroundColor3 = Color3.fromRGB(11, 11, 16), BorderSizePixel = 0, Active = true,
+    }, gui)
+    corner(main, 10); stroke(main, ACCENT, 1.4)
+
+    local bar = new("Frame", { Size = UDim2.new(1, 0, 0, 34), BackgroundColor3 = Color3.fromRGB(17, 17, 25), BorderSizePixel = 0 }, main)
+    corner(bar, 10)
+    new("TextLabel", {
+        Size = UDim2.new(1, -90, 1, 0), Position = UDim2.fromOffset(12, 0), BackgroundTransparency = 1,
+        Font = Enum.Font.GothamBold, Text = "TOMMY HUB  •  Auto Bounty", TextSize = 13,
+        TextColor3 = Color3.fromRGB(245, 245, 255), TextXAlignment = Enum.TextXAlignment.Left,
+    }, bar)
+
+    local body = new("Frame", { Size = UDim2.new(1, 0, 1, -34), Position = UDim2.fromOffset(0, 34), BackgroundTransparency = 1 }, main)
+
+    local function makeButton(parent, text, pos, size, cb)
+        local b = new("TextButton", {
+            Text = text, Position = pos, Size = size, BackgroundColor3 = Color3.fromRGB(24, 24, 32),
+            TextColor3 = Color3.fromRGB(235, 235, 245), Font = Enum.Font.GothamBold, TextSize = 12, AutoButtonColor = true,
+        }, parent)
+        corner(b, 7)
+        local s = stroke(b, Color3.fromRGB(52, 52, 70))
+        b.Activated:Connect(function() pcall(cb) end)
+        return b, s
+    end
+    local function makeLabel(parent, text, pos, size, align)
+        return new("TextLabel", {
+            Text = text, Position = pos, Size = size, BackgroundTransparency = 1, Font = Enum.Font.GothamMedium,
+            TextSize = 11.5, TextColor3 = Color3.fromRGB(215, 215, 230), TextXAlignment = align or Enum.TextXAlignment.Left,
+            TextTruncate = Enum.TextTruncate.AtEnd,
+        }, parent)
+    end
+    local function makeBox(parent, text, pos, size)
+        local bx = new("TextBox", {
+            Text = text, Position = pos, Size = size, BackgroundColor3 = Color3.fromRGB(20, 20, 28),
+            TextColor3 = Color3.new(1, 1, 1), Font = Enum.Font.GothamBold, TextSize = 12, ClearTextOnFocus = false,
+        }, parent)
+        corner(bx, 6); stroke(bx, Color3.fromRGB(55, 55, 70))
+        return bx
+    end
+    local function makeToggle(parent, text, pos, size, initial, onChange)
+        local state = initial
+        local b, s
+        local function paint()
+            b.Text = text .. ": " .. (state and "ON" or "OFF")
+            b.BackgroundColor3 = state and Color3.fromRGB(18, 40, 58) or Color3.fromRGB(24, 24, 32)
+            b.TextColor3 = state and Color3.fromRGB(120, 225, 255) or Color3.fromRGB(170, 170, 190)
+            s.Color = state and ACCENT or Color3.fromRGB(52, 52, 70)
         end
+        b, s = makeButton(parent, text, pos, size, function()
+            state = not state
+            paint()
+            onChange(state)
+        end)
+        paint()
+        return b
+    end
+
+    -- Estado + botón principal
+    abStatusLblRef = new("TextLabel", {
+        Position = UDim2.fromOffset(12, 6), Size = UDim2.new(1, -24, 0, 20), BackgroundTransparency = 1,
+        Font = Enum.Font.GothamBold, TextSize = 12.5, TextColor3 = Color3.fromRGB(190, 190, 205),
+        TextXAlignment = Enum.TextXAlignment.Left, Text = "Status: Inactive / Stopped",
+    }, body)
+    abToggleBtnRef = makeButton(body, "Start Auto Bounty", UDim2.fromOffset(12, 30), UDim2.new(1, -24, 0, 38), function()
+        if getgenv().TommyAutoBountyRunning then stopTommyAutoBountyExact() else runTommyAutoBountyExact() end
     end)
-    table.insert(TranslatableUI, { btn = skipBtn, en = "Skip Target", es = "Saltar Objetivo" })
-    local hopBtn = createActionButton(subRow, "Server Hop", "Cambiar Servidor", btnW, UDim2.new(0.342, 0, 0, 0), function()
-        notifyToggle((CurrentLang == "ES") and "Buscando nuevo servidor..." or "Hopping server...", true)
-        if getgenv().TommyAutoBountyRunning == true and (HopServer or getgenv().HopServer) then
-            task.spawn(HopServer or getgenv().HopServer)
+    abToggleBtnStroke = abToggleBtnRef:FindFirstChildOfClass("UIStroke")
+
+    local third = UDim2.new(0.315, 0, 0, 28)
+    makeButton(body, "Skip Target", UDim2.new(0, 12, 0, 76), third, function()
+        if getgenv().SkipPlayer then getgenv().SkipPlayer(true); notifyToggle("Target skipped!", true)
+        else notifyToggle("Auto Bounty not running", false) end
+    end)
+    makeButton(body, "Server Hop", UDim2.new(0.342, 0, 0, 76), third, function()
+        notifyToggle("Hopping server...", true)
+        if getgenv().TommyAutoBountyRunning == true and getgenv().HopServer then
+            task.spawn(getgenv().HopServer)
         else
             task.spawn(function()
-                local sb = game:GetService("ReplicatedStorage"):FindFirstChild("__ServerBrowser")
+                local sb = ReplicatedStorage:FindFirstChild("__ServerBrowser")
                 if sb then
                     for page = 1, 15 do
                         local ok, servers = pcall(function() return sb:InvokeServer(page) end)
@@ -2841,463 +2953,198 @@ end
                         end
                     end
                 end
-                pcall(function() game:GetService("TeleportService"):Teleport(game.PlaceId) end)
+                pcall(function() TeleportService:Teleport(game.PlaceId) end)
             end)
         end
     end)
-    table.insert(TranslatableUI, { btn = hopBtn, en = "Server Hop", es = "Cambiar Servidor" })
-    local resetBtn = createActionButton(subRow, "Reset Filter", "Reiniciar Filtro", btnW, UDim2.new(0.685, 0, 0, 0), function()
+    makeButton(body, "Reset Filter", UDim2.new(0.685, -12, 0, 76), third, function()
         getgenv().checked = {}
-        notifyToggle((CurrentLang == "ES") and "Lista de objetivos reiniciada!" or "Target blacklist cleared!", true)
+        notifyToggle("Target filter cleared!", true)
     end)
-    table.insert(TranslatableUI, { btn = resetBtn, en = "Reset Filter", es = "Reiniciar Filtro" })
-    local c2 = makeCard(AutoBountyPage, "Hunter Telemetry", "Telemetría", 112, 154)
-    local targetNameBox = Instance.new("TextLabel", c2)
-    targetNameBox.Size = UDim2.new(0.48, 0, 0, 30)
-    targetNameBox.Position = UDim2.new(0, 10, 0, 26)
-    targetNameBox.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
-    targetNameBox.Font = Enum.Font.GothamMedium
-    targetNameBox.TextSize = 11.5
-    targetNameBox.TextColor3 = Color3.fromRGB(220, 220, 235)
-    targetNameBox.Text = (CurrentLang == "ES") and "Objetivo: Ninguno" or "Target: None"
-    Instance.new("UICorner", targetNameBox).CornerRadius = UDim.new(0, 6)
-    local tbStk1 = Instance.new("UIStroke", targetNameBox)
-    tbStk1.Color = Color3.fromRGB(38, 38, 48)
 
-    local targetBountyBox = Instance.new("TextLabel", c2)
-    Tommy.UI.targetBountyBox=targetBountyBox
-    targetBountyBox.Size = UDim2.new(0.48, 0, 0, 30)
-    targetBountyBox.Position = UDim2.new(0.51, 0, 0, 26)
-    targetBountyBox.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
-    targetBountyBox.Font = Enum.Font.GothamMedium
-    targetBountyBox.TextSize = 11.5
-    targetBountyBox.TextColor3 = Color3.fromRGB(220, 220, 235)
-    targetBountyBox.Text = "Bounty: -"
-    Instance.new("UICorner", targetBountyBox).CornerRadius = UDim.new(0, 6)
-    local tbStk2 = Instance.new("UIStroke", targetBountyBox)
-    tbStk2.Color = Color3.fromRGB(38, 38, 48)
+    -- Telemetría
+    local function telemetryBox(text, pos)
+        local f = new("TextLabel", {
+            Text = text, Position = pos, Size = UDim2.new(0.5, -18, 0, 26), BackgroundColor3 = Color3.fromRGB(16, 16, 22),
+            Font = Enum.Font.GothamMedium, TextSize = 11, TextColor3 = Color3.fromRGB(220, 220, 235), TextTruncate = Enum.TextTruncate.AtEnd,
+        }, body)
+        corner(f, 6); stroke(f, Color3.fromRGB(38, 38, 50))
+        return f
+    end
+    targetNameBox = telemetryBox("Target: None", UDim2.fromOffset(12, 112))
+    Tommy.UI.targetBountyBox = telemetryBox("Bounty: -", UDim2.new(0.5, 6, 0, 112))
+    local distBox = telemetryBox("Distance: -", UDim2.fromOffset(12, 144))
+    earnedBox = telemetryBox("Earned: 0", UDim2.new(0.5, 6, 0, 144))
 
-    local distBox = Instance.new("TextLabel", c2)
-    distBox.Size = UDim2.new(0.48, 0, 0, 30)
-    distBox.Position = UDim2.new(0, 10, 0, 64)
-    distBox.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
-    distBox.Font = Enum.Font.GothamMedium
-    distBox.TextSize = 11.5
-    distBox.TextColor3 = Color3.fromRGB(220, 220, 235)
-    distBox.Text = (CurrentLang == "ES") and "Distancia: -" or "Distance: -"
-    Instance.new("UICorner", distBox).CornerRadius = UDim.new(0, 6)
-    local tbStk3 = Instance.new("UIStroke", distBox)
-    tbStk3.Color = Color3.fromRGB(38, 38, 48)
+    -- Equipo
+    local currentTeam = "Marines"
+    pcall(function()
+        if isfile and isfile("Tommy_AutoTeam.txt") then
+            local t = string.match(readfile("Tommy_AutoTeam.txt") or "", "%a+")
+            if t == "Marines" or t == "Pirates" or t == "None" then currentTeam = t end
+        end
+    end)
+    local teamBtns = {}
+    local function paintTeams()
+        for name, b in pairs(teamBtns) do
+            local sel = (name == currentTeam)
+            b.BackgroundColor3 = sel and Color3.fromRGB(30, 42, 68) or Color3.fromRGB(24, 24, 32)
+            b.TextColor3 = sel and Color3.new(1, 1, 1) or Color3.fromRGB(170, 170, 190)
+        end
+    end
+    local function applyTeam(name)
+        currentTeam = name
+        pcall(function() if writefile then writefile("Tommy_AutoTeam.txt", name) end end)
+        if name ~= "None" then
+            task.spawn(function()
+                local rem = ReplicatedStorage:FindFirstChild("Remotes")
+                local comm = rem and rem:FindFirstChild("CommF_")
+                if comm then pcall(function() comm:InvokeServer("SetTeam", name) end) end
+            end)
+        end
+        notifyToggle("Auto team: " .. name, name ~= "None")
+        paintTeams()
+    end
+    makeLabel(body, "Auto Join Team", UDim2.fromOffset(12, 180), UDim2.new(1, -24, 0, 16))
+    teamBtns.Marines = makeButton(body, "Marines", UDim2.new(0, 12, 0, 198), third, function() applyTeam("Marines") end)
+    teamBtns.Pirates = makeButton(body, "Pirates", UDim2.new(0.342, 0, 0, 198), third, function() applyTeam("Pirates") end)
+    teamBtns.None = makeButton(body, "None", UDim2.new(0.685, -12, 0, 198), third, function() applyTeam("None") end)
+    paintTeams()
 
-    local earnedBox = Instance.new("TextLabel", c2)
-    earnedBox.Size = UDim2.new(0.48, 0, 0, 30)
-    earnedBox.Position = UDim2.new(0.51, 0, 0, 64)
-    earnedBox.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
-    earnedBox.Font = Enum.Font.GothamMedium
-    earnedBox.TextSize = 11.5
-    earnedBox.TextColor3 = Color3.fromRGB(225, 225, 240)
-    earnedBox.Text = (CurrentLang == "ES") and "Ganado: 0" or "Earned: 0"
-    Instance.new("UICorner", earnedBox).CornerRadius = UDim.new(0, 6)
-    local tbStk4 = Instance.new("UIStroke", earnedBox)
-    tbStk4.Color = Color3.fromRGB(38, 38, 48)
+    -- Ajustes numéricos
+    getgenv().TommyHealThreshold = getgenv().TommyHealThreshold or 5000
+    getgenv().TommyHealReturnHP = getgenv().TommyHealReturnHP or 8000
+    getgenv().AutoBountyFarSpeed = getgenv().AutoBountyFarSpeed or 160
+    getgenv().AutoBountyNearSpeed = getgenv().AutoBountyNearSpeed or 350
+    local function numberRow(label, y, key, extra)
+        makeLabel(body, label, UDim2.fromOffset(12, y), UDim2.new(0.62, 0, 0, 26))
+        local bx = makeBox(body, tostring(getgenv()[key]), UDim2.new(0.66, 0, 0, y), UDim2.new(0.34, -12, 0, 26))
+        bx.FocusLost:Connect(function()
+            local v = tonumber(bx.Text)
+            if v and v > 0 then
+                getgenv()[key] = v
+                if extra then extra(v) end
+                notifyToggle(label .. ": " .. tostring(v), true)
+            else
+                bx.Text = tostring(getgenv()[key])
+            end
+        end)
+    end
+    numberRow("Heal if HP below", 238, "TommyHealThreshold", function(v) getgenv().TommyHealReturnHP = v + 2500 end)
+    numberRow("Far speed (>300m)", 270, "AutoBountyFarSpeed")
+    numberRow("Near speed (<=300m)", 302, "AutoBountyNearSpeed")
 
+    -- Opciones
+    local half = UDim2.new(0.5, -18, 0, 28)
+    makeToggle(body, "Auto V4", UDim2.fromOffset(12, 340), half, false, function(v)
+        FeatureStates["AutoV4Bounty"] = v; getgenv().AutoV4Bounty = v
+    end)
+    makeToggle(body, "Auto Buso", UDim2.new(0.5, 6, 0, 340), half, true, function(v)
+        FeatureStates["AutoBuso"] = v; Settings.autoBuso = v
+    end)
+    makeToggle(body, "Walk on water", UDim2.fromOffset(12, 374), half, false, function(v)
+        FeatureStates["WalkOnWater"] = v
+    end)
+    local autoStart = true
+    pcall(function()
+        if isfile and isfile("Tommy_AutoStart.txt") then autoStart = (readfile("Tommy_AutoStart.txt") ~= "0") end
+    end)
+    makeToggle(body, "Auto-start", UDim2.new(0.5, 6, 0, 374), half, autoStart, function(v)
+        autoStart = v
+        pcall(function() if writefile then writefile("Tommy_AutoStart.txt", v and "1" or "0") end end)
+    end)
+
+    toastLbl = new("TextLabel", {
+        Position = UDim2.fromOffset(12, 412), Size = UDim2.new(1, -24, 0, 22), BackgroundTransparency = 1,
+        Font = Enum.Font.GothamMedium, TextSize = 11, TextColor3 = Color3.fromRGB(150, 150, 170),
+        TextXAlignment = Enum.TextXAlignment.Center, TextTruncate = Enum.TextTruncate.AtEnd, Text = "Tommy Hub ready",
+    }, body)
+
+    -- Mostrar/ocultar y cerrar
+    local toggleBtn = new("TextButton", {
+        Text = "T", Size = UDim2.fromOffset(44, 44), Position = UDim2.new(0, 14, 0.4, 0), Visible = false,
+        BackgroundColor3 = Color3.fromRGB(14, 14, 20), TextColor3 = ACCENT, Font = Enum.Font.GothamBold, TextSize = 20, ZIndex = 50,
+    }, gui)
+    corner(toggleBtn, 22); stroke(toggleBtn, ACCENT, 1.4)
+    local function setVisible(v) main.Visible = v; toggleBtn.Visible = not v end
+    makeButton(bar, "–", UDim2.new(1, -62, 0, 5), UDim2.fromOffset(24, 24), function() setVisible(false) end)
+    toggleBtn.Activated:Connect(function() setVisible(true) end)
+    UserInputService.InputBegan:Connect(function(input, gpe)
+        if gpe or not isCurrentSession() then return end
+        if input.KeyCode == Enum.KeyCode.RightControl then setVisible(not main.Visible) end
+    end)
+
+    local function closeAll()
+        pcall(stopTommyAutoBountyExact)
+        _G.TommyBountySession = nil
+        pcall(function() gui:Destroy() end)
+    end
+    _G.TommyBountyCleanup = closeAll
+    makeButton(bar, "X", UDim2.new(1, -32, 0, 5), UDim2.fromOffset(24, 24), closeAll)
+
+    -- Arrastrar ventana
+    do
+        local dragging, dragStart, startPos
+        bar.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                dragging, dragStart, startPos = true, input.Position, main.Position
+            end
+        end)
+        UserInputService.InputChanged:Connect(function(input)
+            if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                local d = input.Position - dragStart
+                main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y)
+            end
+        end)
+        UserInputService.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end
+        end)
+    end
+
+    -- Telemetría en vivo
     task.spawn(function()
-        while isCurrentSession() and task.wait(0.5) do
+        while isCurrentSession() and gui.Parent do
             pcall(function()
                 if getgenv().TommyAutoBountyRunning then
                     local t = getgenv().targ
-                    if t and t.Character then
-                        local hrp = t.Character:FindFirstChild("HumanoidRootPart")
-                        local lpHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                        local dist = (hrp and lpHrp) and math.floor((hrp.Position - lpHrp.Position).Magnitude) or 0
-                        targetNameBox.Text = (CurrentLang == "ES") and ("Objetivo: " .. tostring(t.DisplayName or t.Name)) or ("Target: " .. tostring(t.DisplayName or t.Name))
-                        distBox.Text = (CurrentLang == "ES") and ("Distancia: " .. tostring(dist) .. "m") or ("Distance: " .. tostring(dist) .. "m")
-                        local bStat = t:FindFirstChild("leaderstats") and (t.leaderstats:FindFirstChild("Bounty/Honor") or t.leaderstats:FindFirstChild("Bounty") or t.leaderstats:FindFirstChild("Honor"))
-                        local bVal = bStat and tonumber(bStat.Value) or 0
-                        targetBountyBox.Text = string.format("Bounty: %.1fM", bVal / 1000000)
+                    local hrp = t and t.Character and t.Character:FindFirstChild("HumanoidRootPart")
+                    local mine = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                    if hrp then
+                        local ls = t:FindFirstChild("leaderstats")
+                        local bs = ls and (ls:FindFirstChild("Bounty/Honor") or ls:FindFirstChild("Bounty") or ls:FindFirstChild("Honor"))
+                        local bv = bs and tonumber(bs.Value) or 0
+                        targetNameBox.Text = "Target: " .. tostring(t.DisplayName or t.Name) .. string.format(" (%.1fM)", bv / 1000000)
+                        distBox.Text = "Distance: " .. (mine and math.floor((hrp.Position - mine.Position).Magnitude) or 0) .. "m"
                     else
-                        targetNameBox.Text = (CurrentLang == "ES") and "Objetivo: Buscando..." or "Target: Searching..."
-                        distBox.Text = (CurrentLang == "ES") and "Distancia: -" or "Distance: -"
-                        targetBountyBox.Text = "Bounty: -"
+                        targetNameBox.Text = "Target: Searching..."
+                        distBox.Text = "Distance: -"
                     end
-                    earnedBox.Text = (CurrentLang == "ES") and ("Ganado: " .. tostring(Earned or 0)) or ("Earned: " .. tostring(Earned or 0))
                 else
-                    targetNameBox.Text = (CurrentLang == "ES") and "Objetivo: Ninguno" or "Target: None"
-                    distBox.Text = (CurrentLang == "ES") and "Distancia: -" or "Distance: -"
-                    targetBountyBox.Text = "Bounty: -"
-                    earnedBox.Text = (CurrentLang == "ES") and "Ganado: 0" or "Earned: 0"
+                    targetNameBox.Text = "Target: None"
+                    distBox.Text = "Distance: -"
                 end
             end)
-        end
-    end)
-    local c3 = makeCard(AutoBountyPage, "Respawn & Race V4", "Respawn y Raza V4", 148, 272)
-    local p1 = Instance.new("TextLabel", c3)
-    p1.Size = UDim2.new(0.48, 0, 0, 30)
-    p1.Position = UDim2.new(0, 10, 0, 26)
-    p1.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
-    p1.Font = Enum.Font.GothamMedium
-    p1.TextSize = 11
-    p1.TextColor3 = Color3.fromRGB(215, 215, 230)
-    p1.Text = "Auto Buso (Respawn): ON"
-    Instance.new("UICorner", p1).CornerRadius = UDim.new(0, 6)
-    local pStk1 = Instance.new("UIStroke", p1)
-    pStk1.Color = Color3.fromRGB(38, 38, 48)
-
-    local p2 = Instance.new("TextLabel", c3)
-    p2.Size = UDim2.new(0.48, 0, 0, 30)
-    p2.Position = UDim2.new(0.51, 0, 0, 26)
-    p2.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
-    p2.Font = Enum.Font.GothamMedium
-    p2.TextSize = 11
-    p2.TextColor3 = Color3.fromRGB(215, 215, 230)
-    p2.Text = "Auto PvP (Respawn): ON"
-    Instance.new("UICorner", p2).CornerRadius = UDim.new(0, 6)
-    local pStk2 = Instance.new("UIStroke", p2)
-    pStk2.Color = Color3.fromRGB(38, 38, 48)
-
-    local p3 = Instance.new("TextLabel", c3)
-    p3.Size = UDim2.new(0.48, 0, 0, 30)
-    p3.Position = UDim2.new(0, 10, 0, 62)
-    p3.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
-    p3.Font = Enum.Font.GothamMedium
-    p3.TextSize = 11
-    p3.TextColor3 = Color3.fromRGB(215, 215, 230)
-    p3.Text = "SafeZone Evasion: ON"
-    Instance.new("UICorner", p3).CornerRadius = UDim.new(0, 6)
-    local pStk3 = Instance.new("UIStroke", p3)
-    pStk3.Color = Color3.fromRGB(38, 38, 48)
-
-    local p4 = Instance.new("TextLabel", c3)
-    p4.Size = UDim2.new(0.48, 0, 0, 30)
-    p4.Position = UDim2.new(0.51, 0, 0, 62)
-    p4.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
-    p4.Font = Enum.Font.GothamMedium
-    p4.TextSize = 11
-    p4.TextColor3 = Color3.fromRGB(215, 215, 230)
-    p4.Text = "Anti-AFK 20m: ON"
-    Instance.new("UICorner", p4).CornerRadius = UDim.new(0, 6)
-    local pStk4 = Instance.new("UIStroke", p4)
-    pStk4.Color = Color3.fromRGB(38, 38, 48)
-
-    createToggleButton(c3, "AutoV4Bounty", "Auto Race V4", "Auto Despertar V4", UDim2.new(1, -20, 0, 32), UDim2.new(0, 10, 0, 100))
-
-    local c4 = makeCard(AutoBountyPage, "Healing Controls", "Control de Curación", 120, 430)
-    local healLabel = Instance.new("TextLabel", c4)
-    healLabel.Size = UDim2.new(0.60, 0, 0, 28)
-    healLabel.Position = UDim2.new(0, 10, 0, 26)
-    healLabel.BackgroundTransparency = 1
-    healLabel.Font = Enum.Font.GothamMedium
-    healLabel.TextSize = 11.5
-    healLabel.TextColor3 = Color3.fromRGB(215, 215, 230)
-    healLabel.TextXAlignment = Enum.TextXAlignment.Left
-    healLabel.Text = (CurrentLang == "ES") and ("Límite Curación: " .. tostring(getgenv().TommyHealThreshold or 6000)) or ("Heal Threshold: " .. tostring(getgenv().TommyHealThreshold or 6000))
-    table.insert(TranslatableUI, {
-        label = healLabel,
-        en = "Heal Threshold: " .. tostring(getgenv().TommyHealThreshold or 6000),
-        es = "Límite Curación: " .. tostring(getgenv().TommyHealThreshold or 6000)
-    })
-
-    local healInput = Instance.new("TextBox", c4)
-    healInput.Size = UDim2.new(0.30, 0, 0, 28)
-    healInput.Position = UDim2.new(0.65, 0, 0, 26)
-    healInput.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
-    healInput.Font = Enum.Font.GothamBold
-    healInput.TextSize = 13
-    healInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-    healInput.Text = tostring(getgenv().TommyHealThreshold or 6000)
-    healInput.PlaceholderText = "HP"
-    healInput.ClearTextOnFocus = false
-    Instance.new("UICorner", healInput).CornerRadius = UDim.new(0, 6)
-    Instance.new("UIStroke", healInput).Color = Color3.fromRGB(55, 55, 68)
-    healInput.FocusLost:Connect(function()
-        local val = tonumber(healInput.Text)
-        if val and val > 0 then
-            getgenv().TommyHealThreshold = val
-            healLabel.Text = (CurrentLang == "ES") and ("Límite Curación: " .. tostring(val)) or ("Heal Threshold: " .. tostring(val))
-        else
-            healInput.Text = tostring(getgenv().TommyHealThreshold or 6000)
+            task.wait(0.5)
         end
     end)
 
-    local cancelHealBtn = createActionButton(c4, "Cancel Healing", "Cancelar Curación", UDim2.new(1, -20, 0, 36), UDim2.new(0, 10, 0, 68), function()
-        getgenv().CancelHealing = true
-        getgenv().HealingInSky = false
-        pcall(function()
-            if tween then tween:Cancel() end
-            local lp = game:GetService("Players").LocalPlayer
-            local char = lp and lp.Character
-            local pt = char and char:FindFirstChild("PartTele")
-            if pt then pt:Destroy() end
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            if hrp then hrp.AssemblyLinearVelocity = Vector3.zero end
-        end)
-        notifyToggle((CurrentLang == "ES") and "Curación cancelada! Volviendo al combate al instante." or "Healing cancelled! Returning to combat instantly.", true)
-    end)
-    table.insert(TranslatableUI, {
-        btn = cancelHealBtn,
-        en = "Cancel Healing",
-        es = "Cancelar Curación"
-    })
-
-    local c5BountySpeed = makeCard(AutoBountyPage, "Tween Speed Controls", "Velocidad de Desplazamiento", 104, 560)
-    getgenv().AutoBountyFarSpeed = getgenv().AutoBountyFarSpeed or 160
-    getgenv().AutoBountyNearSpeed = getgenv().AutoBountyNearSpeed or 350
-
-    local farLabel = Instance.new("TextLabel", c5BountySpeed)
-    farLabel.Size = UDim2.new(0.32, 0, 0, 26)
-    farLabel.Position = UDim2.new(0, 8, 0, 26)
-    farLabel.BackgroundTransparency = 1
-    farLabel.Font = Enum.Font.GothamMedium
-    farLabel.TextSize = 11
-    farLabel.TextColor3 = Color3.fromRGB(215, 215, 230)
-    farLabel.TextXAlignment = Enum.TextXAlignment.Left
-    farLabel.Text = (CurrentLang == "ES") and "Vel. Lejos:" or "Far Speed:"
-
-    local farInput = Instance.new("TextBox", c5BountySpeed)
-    farInput.Size = UDim2.new(0.16, 0, 0, 26)
-    farInput.Position = UDim2.new(0.33, 0, 0, 26)
-    farInput.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
-    farInput.Font = Enum.Font.GothamBold
-    farInput.TextSize = 12
-    farInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-    farInput.Text = tostring(getgenv().AutoBountyFarSpeed or 160)
-    farInput.PlaceholderText = "160"
-    farInput.ClearTextOnFocus = false
-    Instance.new("UICorner", farInput).CornerRadius = UDim.new(0, 6)
-    Instance.new("UIStroke", farInput).Color = Color3.fromRGB(55, 55, 68)
-    farInput.FocusLost:Connect(function()
-        local val = tonumber(farInput.Text)
-        if val and val > 0 then
-            getgenv().AutoBountyFarSpeed = val
-            notifyToggle((CurrentLang == "ES") and ("Velocidad Lejos: " .. tostring(val)) or ("Far Speed: " .. tostring(val)), true)
-        else
-            farInput.Text = tostring(getgenv().AutoBountyFarSpeed or 160)
-        end
-    end)
-
-    local nearLabel = Instance.new("TextLabel", c5BountySpeed)
-    nearLabel.Size = UDim2.new(0.32, 0, 0, 26)
-    nearLabel.Position = UDim2.new(0.52, 0, 0, 26)
-    nearLabel.BackgroundTransparency = 1
-    nearLabel.Font = Enum.Font.GothamMedium
-    nearLabel.TextSize = 11
-    nearLabel.TextColor3 = Color3.fromRGB(215, 215, 230)
-    nearLabel.TextXAlignment = Enum.TextXAlignment.Left
-    nearLabel.Text = (CurrentLang == "ES") and "Vel. Cerca:" or "Near Speed:"
-
-    local nearInput = Instance.new("TextBox", c5BountySpeed)
-    nearInput.Size = UDim2.new(0.16, 0, 0, 26)
-    nearInput.Position = UDim2.new(0.84, -6, 0, 26)
-    nearInput.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
-    nearInput.Font = Enum.Font.GothamBold
-    nearInput.TextSize = 12
-    nearInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-    nearInput.Text = tostring(getgenv().AutoBountyNearSpeed or 350)
-    nearInput.PlaceholderText = "350"
-    nearInput.ClearTextOnFocus = false
-    Instance.new("UICorner", nearInput).CornerRadius = UDim.new(0, 6)
-    Instance.new("UIStroke", nearInput).Color = Color3.fromRGB(55, 55, 68)
-    nearInput.FocusLost:Connect(function()
-        local val = tonumber(nearInput.Text)
-        if val and val > 0 then
-            getgenv().AutoBountyNearSpeed = val
-            notifyToggle((CurrentLang == "ES") and ("Velocidad Cerca: " .. tostring(val)) or ("Near Speed: " .. tostring(val)), true)
-        else
-            nearInput.Text = tostring(getgenv().AutoBountyNearSpeed or 350)
-        end
-    end)
-
-    local spdInfo = Instance.new("TextLabel", c5BountySpeed)
-    spdInfo.Size = UDim2.new(1, -16, 0, 36)
-    spdInfo.Position = UDim2.new(0, 8, 0, 60)
-    spdInfo.BackgroundTransparency = 1
-    spdInfo.Font = Enum.Font.GothamMedium
-    spdInfo.TextSize = 10.5
-    spdInfo.TextColor3 = Color3.fromRGB(180, 185, 205)
-    spdInfo.TextWrapped = true
-    spdInfo.Text = (CurrentLang == "ES") and "Lejos (>300m): 160 | Cerca (<=300m): 350 hasta eliminar el objetivo" or "Far (>300m): 160 | Near (<=300m): 350 until target is killed"
-
-    local c6AutoTeam = makeCard(AutoBountyPage, "Auto Join Team", "Auto Unirse a Equipo", 84, 672)
-
-    local currentAutoTeam = "Marines"
-    pcall(function()
-        if isfile and isfile("Tommy_AutoTeam.txt") and readfile then
-            local raw = readfile("Tommy_AutoTeam.txt")
-            if raw then
-                local t = string.match(raw, "%a+")
-                if t == "Marines" or t == "Pirates" or t == "None" then
-                    currentAutoTeam = t
-                end
-            end
-        else
-            if writefile then writefile("Tommy_AutoTeam.txt", "Marines") end
-        end
-    end)
-
-    local statusLbl = Instance.new("TextLabel", c6AutoTeam)
-    statusLbl.Name = "AutoTeamStatus"
-    statusLbl.Size = UDim2.new(1, -20, 0, 18)
-    statusLbl.Position = UDim2.new(0, 10, 0, 58)
-    statusLbl.BackgroundTransparency = 1
-    statusLbl.Font = Enum.Font.GothamMedium
-    statusLbl.TextSize = 11
-    statusLbl.TextColor3 = Color3.fromRGB(165, 170, 190)
-    statusLbl.TextXAlignment = Enum.TextXAlignment.Center
-
-    local teamButtons = {}
-
-    local function updateTeamVisuals()
-        local curAccent = _G.CurrentAccentColor or Color3.fromRGB(65, 145, 255)
-        for team, btn in pairs(teamButtons) do
-            local isSel = (team == currentAutoTeam)
-            btn.BackgroundColor3 = isSel and Color3.fromRGB(30, 42, 68) or Color3.fromRGB(20, 20, 26)
-            local st = btn:FindFirstChildOfClass("UIStroke")
-            if st then
-                st.Color = isSel and curAccent or Color3.fromRGB(45, 45, 58)
-                st.Thickness = isSel and 1.5 or 1
-            end
-            local lbl = btn:FindFirstChildOfClass("TextLabel")
-            if lbl then
-                lbl.TextColor3 = isSel and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(180, 180, 195)
+    -- Equipo automático + inicio automático del Auto Bounty
+    task.spawn(function()
+        if not game:IsLoaded() then game.Loaded:Wait() end
+        if currentTeam ~= "None" then
+            local tries = 0
+            while isCurrentSession() and tries < 10 and (not LocalPlayer.Team or LocalPlayer.Team.Name ~= currentTeam) do
+                local rem = ReplicatedStorage:WaitForChild("Remotes", 10)
+                local comm = rem and rem:FindFirstChild("CommF_")
+                if comm then pcall(function() comm:InvokeServer("SetTeam", currentTeam) end) end
+                task.wait(1)
+                tries = tries + 1
             end
         end
-        if statusLbl then
-            local selDescEN, selDescES
-            if currentAutoTeam == "Pirates" then
-                selDescEN = "Pirates (Active)"
-                selDescES = "Piratas (Activo)"
-            elseif currentAutoTeam == "Marines" then
-                selDescEN = "Marines (Active)"
-                selDescES = "Marinos (Activo)"
-            else
-                selDescEN = "None (Disabled)"
-                selDescES = "Ninguno (Desactivado)"
-            end
-            statusLbl.Text = (CurrentLang == "ES") and ("Auto-Unirse: " .. selDescES) or ("Auto-Join: " .. selDescEN)
-        end
-    end
-    _G.TommyUpdateTeamVisuals = updateTeamVisuals
-
-    local function switchAndSaveTeam(teamName)
-        currentAutoTeam = teamName
-        pcall(function()
-            if writefile then
-                writefile("Tommy_AutoTeam.txt", teamName)
-            end
-        end)
-        if teamName == "Marines" or teamName == "Pirates" then
-            task.spawn(function()
-                pcall(function()
-                    local rem = game:GetService("ReplicatedStorage"):FindFirstChild("Remotes")
-                    local comm = rem and rem:FindFirstChild("CommF_")
-                    if comm then
-                        comm:InvokeServer("SetTeam", teamName)
-                    end
-                end)
-            end)
-            local msg = (CurrentLang == "ES") and ("Auto-Unirse configurado: " .. (teamName == "Marines" and "Marinos" or "Piratas")) or ("Auto-Join set: " .. teamName)
-            notifyToggle(msg, true)
-        else
-            local msg = (CurrentLang == "ES") and "Auto-Unirse desactivado" or "Auto-Join disabled"
-            notifyToggle(msg, false)
-        end
-        updateTeamVisuals()
-    end
-
-    local btnSize = UDim2.new(0.31, -4, 0, 28)
-    teamButtons["Pirates"] = createActionButton(c6AutoTeam, "Pirates", "Piratas", btnSize, UDim2.new(0, 8, 0, 26), function()
-        switchAndSaveTeam("Pirates")
-    end)
-    teamButtons["Marines"] = createActionButton(c6AutoTeam, "Marines", "Marinos", btnSize, UDim2.new(0.335, 3, 0, 26), function()
-        switchAndSaveTeam("Marines")
-    end)
-    teamButtons["None"] = createActionButton(c6AutoTeam, "None", "Desactivar", btnSize, UDim2.new(0.67, -2, 0, 26), function()
-        switchAndSaveTeam("None")
-    end)
-
-    for team, btn in pairs(teamButtons) do
-        btn.MouseLeave:Connect(function()
-            task.defer(function()
-                if currentAutoTeam == team then
-                    local curAccent = _G.CurrentAccentColor or Color3.fromRGB(65, 145, 255)
-                    btn.BackgroundColor3 = Color3.fromRGB(30, 42, 68)
-                    local st = btn:FindFirstChildOfClass("UIStroke")
-                    if st then
-                        st.Color = curAccent
-                        st.Thickness = 1.5
-                    end
-                    local lbl = btn:FindFirstChildOfClass("TextLabel")
-                    if lbl then
-                        lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
-                    end
-                end
-            end)
-        end)
-    end
-    updateTeamVisuals()
-
-    FeatureCallbacks["AutoBounty"] = function(v)
-        if v then
+        task.wait(2)
+        if isCurrentSession() and autoStart and not getgenv().TommyAutoBountyRunning then
+            notifyToggle("Auto-starting Auto Bounty...", true)
             runTommyAutoBountyExact()
-        else
-            stopTommyAutoBountyExact()
         end
-    end
-
-    local bountyV4Conn = nil
-    FeatureCallbacks["AutoV4Bounty"] = function(v)
-        getgenv().AutoV4Bounty = v
-        if v then
-            if bountyV4Conn then task.cancel(bountyV4Conn) end
-            bountyV4Conn = task.spawn(function()
-                while FeatureStates["AutoV4Bounty"] do
-                    task.wait(0.5)
-                    pcall(function()
-                        local char = LocalPlayer.Character
-                        if char then
-                            local energy = char:FindFirstChild("RaceEnergy")
-                            local transformed = char:FindFirstChild("RaceTransformed")
-                            local stun = char:FindFirstChild("Stun")
-                            local busy = char:FindFirstChild("Busy")
-
-                            local hasEnergy = energy and tonumber(energy.Value) and tonumber(energy.Value) >= 1
-                            local notTransformed = not transformed or (transformed.Value ~= true)
-                            local notStunned = not stun or (tonumber(stun.Value) or 0) <= 0
-                            local notBusy = not busy or (busy.Value ~= true)
-
-                            if hasEnergy and notTransformed and notStunned and notBusy then
-                                pcall(function()
-                                    local remotes = game:GetService("ReplicatedStorage"):FindFirstChild("Remotes")
-                                    local commE = remotes and remotes:FindFirstChild("CommE")
-                                    if commE then commE:FireServer("ActivateAwakening", true) end
-                                end)
-                                pcall(function()
-                                    local vim = game:GetService("VirtualInputManager")
-                                    if vim then
-                                        vim:SendKeyEvent(true, Enum.KeyCode.Y, false, game)
-                                        task.wait(0.05)
-                                        vim:SendKeyEvent(false, Enum.KeyCode.Y, false, game)
-                                    end
-                                end)
-                                pcall(function()
-                                    local bp = LocalPlayer:FindFirstChildOfClass("Backpack") or LocalPlayer:FindFirstChild("Backpack")
-                                    local awk = bp and bp:FindFirstChild("Awakening")
-                                    if awk then
-                                        local rf = awk:FindFirstChild("RemoteFunction")
-                                        if rf and rf:IsA("RemoteFunction") then pcall(function() rf:InvokeServer(true) end) end
-                                        local re = awk:FindFirstChild("RemoteEvent")
-                                        if re and re:IsA("RemoteEvent") then pcall(function() re:FireServer(true) end) end
-                                    end
-                                end)
-                                task.wait(2.0)
-                            end
-                        end
-                    end)
-                end
-            end)
-        else
-            if bountyV4Conn then task.cancel(bountyV4Conn); bountyV4Conn = nil end
-        end
-    end
-    setFeatureState("AutoV4Bounty", true)
+    end)
 end
