@@ -1,6 +1,6 @@
 repeat task.wait() until game:IsLoaded()
 
--- 🔥Ximena Hub❤️ by Tommy (Michelle UI + motor Ximena)
+-- Ximena Hub (Michelle UI + motor Ximena)
 local __XimenaEngine = (function()
 
 local F = {
@@ -828,6 +828,22 @@ _G.XimenaInSafeZone=nil
 _G.XimenaPvPAllowed=nil
 Ximena.ControlCatalog = {}
 Ximena.XControls = {}
+function Ximena.TrySetFlag(name, value)
+    local setter = setfflag or set_fflag
+    if type(setter) ~= "function" then return false end
+    value = tostring(value)
+    local cands = { name }
+    for _, p in ipairs({ "DFFlag", "DFInt", "DFString", "DFLog", "FFlag", "FInt", "FString", "FLog", "SFFlag" }) do
+        if string.sub(name, 1, #p) == p then table.insert(cands, string.sub(name, #p + 1)) end
+    end
+    local okAny = false
+    for _, c in ipairs(cands) do
+        local ok, res = pcall(setter, c, value)
+        if ok and res ~= false then okAny = true end
+    end
+    return okAny
+end
+_G.XimenaTrySetFlag = Ximena.TrySetFlag
 Ximena.XSeen = {}
 function Ximena.XAdd(kind, key, inst, label, data)
     pcall(function()
@@ -1582,7 +1598,7 @@ Ximena.UI.screen=ScreenGui
     creditsLbl.Position = UDim2.new(0, 0, 0, 0)
     creditsLbl.BackgroundTransparency = 1
     creditsLbl.Font = Enum.Font.GothamBold
-    creditsLbl.Text = "🔥Ximena Hub❤️ by Tommy"
+    creditsLbl.Text = "Ximena Hub"
     creditsLbl.TextSize = 10
     creditsLbl.TextColor3 = Color3.fromRGB(210, 210, 235)
     creditsLbl.TextXAlignment = Enum.TextXAlignment.Center
@@ -1690,9 +1706,7 @@ Ximena.UI.screen=ScreenGui
         { id = "ControlPeople", label = "Player list" },
         { id = "Cheats",        label = "Cheats" },
         { id = "FFlags",        label = "ffflags" },
-        { id = "Macro",         label = "Macro" },
         { id = "Keybinds",      label = "Keybinds" },
-        { id = "Color",         label = "Color" },
         { id = "Visual",        label = "Visuals" },
         { id = "HUD",           label = "Hud" },
         { id = "Dungeons",      label = "Dungeons" },
@@ -4630,15 +4644,17 @@ do
         local camera = workspace.CurrentCamera
         if not hrp or not camera then return end
         local dir = camera.CFrame.LookVector
-        local att = Instance.new("Attachment", hrp)
-        local lv = Instance.new("LinearVelocity", hrp)
-        lv.MaxForce = math.huge
-        lv.VelocityConstraintMode = Enum.VelocityConstraintMode.Vector
-        lv.VectorVelocity = dir * 400
-        lv.Attachment0 = att
+        local old = hrp:FindFirstChild("Ximena_ZBoost")
+        if old then old:Destroy() end
+        local bv = Instance.new("BodyVelocity")
+        bv.Name = "Ximena_ZBoost"
+        bv.MaxForce = Vector3.new(1e9, 1e9, 1e9)
+        bv.P = 1e5
+        bv.Velocity = dir * 400
+        bv.Parent = hrp
+        hrp.AssemblyLinearVelocity = dir * 400
         task.delay(0.9, function()
-            if lv and lv.Parent then lv:Destroy() end
-            if att and att.Parent then att:Destroy() end
+            if bv and bv.Parent then bv:Destroy() end
         end)
     end
     local function activateZButtonVisual(zBtn)
@@ -4720,9 +4736,9 @@ do
             end
         end)
         sanguineZConn = UserInputService.InputBegan:Connect(function(input, gpe)
-            if gpe or isSimulatingKeys or (_G.IsSyntheticKey and _G.IsSyntheticKey(input.KeyCode)) then return end
+            if isSimulatingKeys or UserInputService:GetFocusedTextBox() then return end
             if input.KeyCode == Enum.KeyCode.Z and FeatureStates["SanguineZBoost"] then
-                activateZButtonVisual(zBtn)
+                task.spawn(activateZButtonVisual, zBtn)
             end
         end)
     end
@@ -10778,8 +10794,7 @@ end
         if fn ~= "" then
             local applied = false
             pcall(function()
-                local sff = setfflag or set_fflag
-                if type(sff) == "function" then applied = sff(fn, fv) ~= false end
+                applied = Ximena.TrySetFlag(fn, fv)
             end)
             if applied then
                 fflagStatusLbl.Text = "[SUCCESS] Injected: " .. fn .. " = " .. fv
@@ -11889,7 +11904,6 @@ do
         { id = "ClickMultiplier",   name = "Click Multiplier",         mode = "Toggle", defaultKey = "None" },
         { id = "WalkOnWater",       name = "Walk on Water (Jesus)",    mode = "Toggle", defaultKey = "B" },
         { id = "OneShotKitsune",          name = "Fruit M1 1-Shot",          mode = "Toggle", defaultKey = "H" },
-        { id = "PvPMacro",          name = "Combo Macro",              mode = "Action", defaultKey = "T", run = function() if executeMacroCombo then executeMacroCombo() end end },
         { id = "InfinitySoru",      name = "Infinite Soru Glitch",     mode = "Toggle", defaultKey = "None" },
         { id = "WalkSpeed",         name = "Speed Hack",               mode = "Toggle", defaultKey = "None" },
         { id = "Fly",               name = "Fly Hack",                 mode = "Toggle", defaultKey = "None" },
@@ -23762,8 +23776,7 @@ do
         local accepted, failed = 0, 0
         for i, pair in ipairs(flagList) do
             if shouldContinue and not shouldContinue() then break end
-            local ok, result = pcall(setter, pair[1], tostring(pair[2]))
-            if ok and result ~= false then accepted += 1 else failed += 1 end
+            if Ximena.TrySetFlag(pair[1], pair[2]) then accepted += 1 else failed += 1 end
             if onProgress then pcall(onProgress, i, #flagList) end
             if i % 4 == 0 then task.wait() end
         end
@@ -26536,7 +26549,7 @@ return ScreenGui
 
 end)()
 
--- 🔥Ximena Hub❤️ by Tommy v6 | English | WindUI
+-- Ximena Hub v6 | English | WindUI
 repeat task.wait() until game:IsLoaded()
 
 local ok, WindUI = pcall(function()
@@ -27774,7 +27787,7 @@ end
 
 -- ==================== UI ====================
 local Window = WindUI:CreateWindow({
-    Title = "🔥Ximena Hub❤️ by Tommy",
+    Title = "Ximena Hub",
     Icon = "star",
     Theme = "Dark",
     Folder = "XimenaHub",
@@ -27892,86 +27905,95 @@ end })
 Misc:Toggle({ Title = "Walk on Water", Value = false, Callback = function(v) Config.WalkOnWater = v end })
 Misc:Toggle({ Title = "Walk on Lava", Value = false, Callback = function(v) Config.WalkOnLava = v end })
 
-Misc:Paragraph({ Title = "Voldigoad Shop", Desc = "Cyborg / Ghoul / Stats / Race" })
+Misc:Paragraph({ Title = "Ximena Shop", Desc = "Cyborg / Ghoul / Stats / Race" })
 Misc:Button({ Title = "Buy Cyborg Race", Callback = function()
     pcall(function() CommF:InvokeServer("CyborgTrainer", "Buy") end)
-    WindUI:Notify({ Title = "Shop", Content = "Cyborg sent", Duration = 2 })
+    WindUI:Notify({ Title = "Ximena Shop", Content = "Cyborg sent", Duration = 2 })
 end })
 Misc:Button({ Title = "Buy Ghoul Race", Callback = function()
     pcall(function()
         CommF:InvokeServer("Ectoplasm", "BuyCheck", 4)
         CommF:InvokeServer("Ectoplasm", "Change", 4)
     end)
-    WindUI:Notify({ Title = "Shop", Content = "Ghoul sent", Duration = 2 })
+    WindUI:Notify({ Title = "Ximena Shop", Content = "Ghoul sent", Duration = 2 })
 end })
 Misc:Button({ Title = "Reset Player Stats", Callback = function()
     pcall(function() CommF:InvokeServer("BlackbeardReward", "Refund", "2") end)
-    WindUI:Notify({ Title = "Shop", Content = "Reset Stats sent", Duration = 2 })
+    WindUI:Notify({ Title = "Ximena Shop", Content = "Reset Stats sent", Duration = 2 })
 end })
 Misc:Button({ Title = "Reroll Race", Callback = function()
     pcall(function() CommF:InvokeServer("BlackbeardReward", "Reroll", "2") end)
-    WindUI:Notify({ Title = "Shop", Content = "Reroll Race sent", Duration = 2 })
+    WindUI:Notify({ Title = "Ximena Shop", Content = "Reroll Race sent", Duration = 2 })
 end })
 
 -- FLAGS
 local Flags = Window:Tab({ Title = "Flags", Icon = "flag" })
 local flagPaste = ""
-Flags:Paragraph({ Title = "Paste FFlags", Desc = "Paste flags (one per line: Name=Value)\nThen press Apply Pasted" })
+local function SetFlag(n, v)
+    if _G.XimenaTrySetFlag then return _G.XimenaTrySetFlag(n, v) end
+    return false
+end
+local function applyList(list)
+    local ok, fail = 0, 0
+    for _, p in ipairs(list) do
+        if SetFlag(p[1], p[2]) then ok += 1 else fail += 1 end
+    end
+    return ok, fail
+end
+local function lowGraphics()
+    pcall(function() settings().Rendering.QualityLevel = Enum.QualityLevel.Level01 end)
+    pcall(function() Lighting.GlobalShadows = false; Lighting.FogEnd = 9e9 end)
+end
+local function flagNotify(msg)
+    WindUI:Notify({ Title = "Flags", Content = msg, Duration = 3 })
+end
+local hasFlags = (type(setfflag) == "function") or (type(set_fflag) == "function")
+Flags:Paragraph({ Title = "Paste FFlags", Desc = hasFlags and "One per line: Name=Value, then press Apply Pasted" or "Your executor has no setfflag: only the graphics fallback will work" })
 Flags:Input({
     Title = "Paste Flags Here",
-    Placeholder = "DFIntTaskSchedulerTargetFps=999\nDFIntTextureQualityOverride=1",
+    Placeholder = "DFIntTaskSchedulerTargetFps=999",
     Callback = function(text) flagPaste = text or "" end,
 })
 Flags:Button({ Title = "Apply Pasted Flags", Callback = function()
-    local count = 0
+    local ok, fail = 0, 0
     for line in string.gmatch(flagPaste, "[^\r\n]+") do
         local name, value = line:match("^%s*([%w_]+)%s*=%s*(.-)%s*$")
-        if name and value and setfflag then
-            pcall(function() setfflag(name, value) end)
-            count += 1
+        if name and value then
+            if SetFlag(name, value) then ok += 1 else fail += 1 end
         end
     end
-    WindUI:Notify({ Title = "Flags", Content = "Applied " .. count .. " flags", Duration = 2 })
+    flagNotify("Accepted: " .. ok .. " | Failed: " .. fail)
 end })
 Flags:Button({ Title = "Apply FPS Flags", Callback = function()
-    pcall(function()
-        if setfflag then
-            setfflag("DFIntTaskSchedulerTargetFps", "999")
-            setfflag("DFFlagTextureQualityOverrideEnabled", "True")
-            setfflag("DFIntTextureQualityOverride", "1")
-        end
-        settings().Rendering.QualityLevel = 1
-        Lighting.GlobalShadows = false
-        Lighting.FogEnd = 9e9
-    end)
-    WindUI:Notify({ Title = "Flags", Content = "FPS flags applied", Duration = 2 })
+    local ok, fail = applyList({
+        { "DFIntTaskSchedulerTargetFps", "999" },
+        { "DFFlagTextureQualityOverrideEnabled", "True" },
+        { "DFIntTextureQualityOverride", "1" },
+    })
+    lowGraphics()
+    if type(setfpscap) == "function" then pcall(setfpscap, 999) end
+    flagNotify("FPS: accepted " .. ok .. ", failed " .. fail .. " (graphics reduced)")
 end })
 Flags:Button({ Title = "Apply Network Flags", Callback = function()
+    local ok, fail = applyList({ { "DFIntConnectionMTUSize", "1492" } })
     pcall(function()
-        if setfflag then
-            setfflag("DFIntConnectionMTUSize", "1492")
-        end
         if sethiddenproperty then
             sethiddenproperty(lp, "SimulationRadius", 1000)
             sethiddenproperty(lp, "MaxSimulationRadius", 1000)
         end
     end)
-    WindUI:Notify({ Title = "Flags", Content = "Network flags applied", Duration = 2 })
+    flagNotify("Network: accepted " .. ok .. ", failed " .. fail)
 end })
 Flags:Button({ Title = "Apply All Preset Flags", Callback = function()
-    pcall(function()
-        if setfflag then
-            setfflag("DFIntTaskSchedulerTargetFps", "999")
-            setfflag("DFIntTextureQualityOverride", "1")
-            setfflag("DFFlagTextureQualityOverrideEnabled", "True")
-            setfflag("DFIntConnectionMTUSize", "1492")
-        end
-        if sethiddenproperty then sethiddenproperty(lp, "SimulationRadius", math.huge) end
-        settings().Rendering.QualityLevel = 1
-        Lighting.GlobalShadows = false
-        Lighting.FogEnd = 9e9
-    end)
-    WindUI:Notify({ Title = "Flags", Content = "All preset flags applied", Duration = 2 })
+    local ok, fail = applyList({
+        { "DFIntTaskSchedulerTargetFps", "999" },
+        { "DFFlagTextureQualityOverrideEnabled", "True" },
+        { "DFIntTextureQualityOverride", "1" },
+        { "DFIntConnectionMTUSize", "1492" },
+    })
+    pcall(function() if sethiddenproperty then sethiddenproperty(lp, "SimulationRadius", 1000) end end)
+    lowGraphics()
+    flagNotify("All: accepted " .. ok .. ", failed " .. fail)
 end })
 
 -- UTILITIES
@@ -28009,21 +28031,6 @@ Visuals:Toggle({ Title = "Show HP", Value = true, Callback = function(v) Config.
 Visuals:Toggle({ Title = "Highlight", Value = false, Callback = function(v) Config.ESP_Highlight = v end })
 Visuals:Slider({ Title = "Text Size", Step = 1, Value = { Min = 10, Max = 22, Default = 13 }, Callback = function(v) Config.ESP_TextSize = v end })
 
-Visuals:Paragraph({ Title = "Skin Changer", Desc = "Colors Fruit / Melee / Sword / Gun only" })
-Visuals:Toggle({ Title = "Enable Skin Changer", Value = false, Callback = function(v) Config.SkinEnabled = v end })
-Visuals:Toggle({ Title = "RGB Cycle", Value = false, Callback = function(v)
-    Config.SkinRGB = v
-    if v and not Config.SkinEnabled then Config.SkinEnabled = true end
-end })
-Visuals:Slider({ Title = "Color Strength", Step = 5, Value = { Min = 0, Max = 100, Default = 100 }, Callback = function(v) Config.SkinStrength = v end })
-pcall(function()
-    Visuals:Colorpicker({
-        Title = "Preset Color",
-        Default = Color3.fromRGB(160, 70, 255),
-        Callback = function(c) Config.SkinColor = c end,
-    })
-end)
-
 
 -- ================= PUENTE: opciones del motor Ximena en WindUI =================
 do
@@ -28031,13 +28038,13 @@ do
     if X and X.XControls then
         local PAGES = {
             Combat = {"Combat","swords"}, AutoBounty = {"Auto Bounty","target"}, Glitches = {"Cheats","bug"},
-            FFlags = {"FFlags","flag"}, Macro = {"Macro","play"}, Keybinds = {"Keybinds","keyboard"},
-            SacredVFX = {"Color / VFX","palette"}, Visual = {"Visuals+","eye"}, HUD = {"HUD","layout"},
+            FFlags = {"FFlags","flag"}, Keybinds = {"Keybinds","keyboard"},
+            Visual = {"Visuals+","eye"}, HUD = {"HUD","layout"},
             Dungeons = {"Dungeons","castle"}, TPIslands = {"Tp Map","map"}, UI = {"UI","monitor"},
             Misc = {"Misc+","settings"}, Configs = {"Configs","save"}, Report = {"Report","message-square"},
             Functions = {"Functions","code"}, ControlPeople = {"Players","users"},
         }
-        local order = {"Combat","AutoBounty","Glitches","FFlags","Macro","Keybinds","SacredVFX","Visual","HUD","Dungeons","TPIslands","UI","Misc","Configs","Report","Functions","ControlPeople"}
+        local order = {"Combat","AutoBounty","Glitches","FFlags","Keybinds","Visual","HUD","Dungeons","TPIslands","UI","Misc","Configs","Report","Functions","ControlPeople"}
         local sec = Window:Section({ Title = "Ximena Engine", Opened = true })
         local home = sec:Tab({ Title = "Engine", Icon = "cpu" })
         pcall(function()
@@ -28087,5 +28094,5 @@ do
     end
 end
 
-WindUI:Notify({ Title = "🔥Ximena Hub❤️ by Tommy", Content = "v6 loaded — Aim / Flee / Soru / ESP", Duration = 3 })
-print("✅ 🔥Ximena Hub❤️ by Tommy v6 EN")
+WindUI:Notify({ Title = "Ximena Hub", Content = "v6 loaded — Aim / Flee / Soru / ESP", Duration = 3 })
+print("✅ Ximena Hub v6 EN")
