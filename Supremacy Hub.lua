@@ -1,6 +1,6 @@
 --==============================================================
 -- 👑 XIMENA HUB ❤️  |  by Tommy
--- Auto Bounty: Fruit M1 Void + Fast Attack + Lvl 2200+ + SafeZone
+-- Auto Bounty Turbo: Fruit M1 Void + Fast Attack + Lvl 2200+ + SafeZone
 --==============================================================
 repeat task.wait() until game:IsLoaded()
 
@@ -24,21 +24,26 @@ local RegisterAttack = Net and Net:WaitForChild("RE/RegisterAttack", 10)
 local RegisterHit    = Net and Net:WaitForChild("RE/RegisterHit", 10)
 
 --==================== ESTADO ====================
-_G.G_FruitM1             = _G.G_FruitM1             or false
-_G.G_VoidFruitM1         = _G.G_VoidFruitM1         or false
-_G.G_FastAttack          = _G.G_FastAttack          or false
-_G.G_AttackPlayers       = _G.G_AttackPlayers       or true
-_G.G_AttackMobs          = _G.G_AttackMobs          or false
-_G.G_AutoBounty          = _G.G_AutoBounty          or false
-_G.G_AutoBountyRange     = _G.G_AutoBountyRange     or 5000
-_G.G_AutoBountyTP        = _G.G_AutoBountyTP        or true
-_G.G_AutoBountyHaki      = _G.G_AutoBountyHaki      or true
-_G.G_AutoBountyTeamCheck = _G.G_AutoBountyTeamCheck or true
-_G.G_AutoBountySafeCheck = _G.G_AutoBountySafeCheck or true
-_G.G_AutoBountyAutoEquip = _G.G_AutoBountyAutoEquip or true
-_G.G_AutoBountyMinLevel  = _G.G_AutoBountyMinLevel  or 2200
-_G.G_AutoBountyMinBounty = _G.G_AutoBountyMinBounty or 0
-_G.G_AutoBountyMaxBounty = _G.G_AutoBountyMaxBounty or 30000000
+_G.G_FruitM1              = _G.G_FruitM1              or false
+_G.G_VoidFruitM1          = _G.G_VoidFruitM1          or false
+_G.G_FastAttack           = _G.G_FastAttack           or false
+_G.G_FruitM1TurboMode     = _G.G_FruitM1TurboMode     or false
+_G.G_FruitM1Speed         = _G.G_FruitM1Speed         or 0.02
+_G.G_FruitM1ComboSpeed    = _G.G_FruitM1ComboSpeed    or 0.05
+_G.G_AutoLagSwitch        = _G.G_AutoLagSwitch        or true
+_G.G_LagKickCount         = _G.G_LagKickCount         or 0
+_G.G_AttackPlayers        = _G.G_AttackPlayers        or true
+_G.G_AttackMobs           = _G.G_AttackMobs           or false
+_G.G_AutoBounty           = _G.G_AutoBounty           or false
+_G.G_AutoBountyRange      = _G.G_AutoBountyRange      or 5000
+_G.G_AutoBountyTP         = _G.G_AutoBountyTP         or true
+_G.G_AutoBountyHaki       = _G.G_AutoBountyHaki       or true
+_G.G_AutoBountyTeamCheck  = _G.G_AutoBountyTeamCheck  or true
+_G.G_AutoBountySafeCheck  = _G.G_AutoBountySafeCheck  or true
+_G.G_AutoBountyAutoEquip  = _G.G_AutoBountyAutoEquip  or true
+_G.G_AutoBountyMinLevel   = _G.G_AutoBountyMinLevel   or 2200
+_G.G_AutoBountyMinBounty  = _G.G_AutoBountyMinBounty  or 0
+_G.G_AutoBountyMaxBounty  = _G.G_AutoBountyMaxBounty  or 30000000
 
 --==================== SAFE ZONE (v2 - fixed) ====================
 local SafeZoneCache = { zones = {}, lastScan = 0, lastPlace = 0 }
@@ -58,7 +63,6 @@ local function scanSafeZones()
         table.insert(candidates, map:FindFirstChild("SafeZones"))
         table.insert(candidates, map:FindFirstChild("SafeZone"))
     end
-    -- Fallback: buscar cualquier carpeta con "safezone" en workspace
     for _, ch in ipairs(workspace:GetChildren()) do
         if ch:IsA("Folder") and string.find(string.lower(ch.Name), "safezone") then
             table.insert(candidates, ch)
@@ -67,14 +71,8 @@ local function scanSafeZones()
 
     local function processZone(zone)
         if not zone then return end
-        local part = nil
-        if zone:IsA("BasePart") then
-            part = zone
-        else
-            part = zone:FindFirstChildWhichIsA("BasePart", true)
-        end
+        local part = zone:IsA("BasePart") and zone or zone:FindFirstChildWhichIsA("BasePart", true)
         if not part then return end
-
         local sizeX, sizeY, sizeZ = part.Size.X, part.Size.Y, part.Size.Z
         local mesh = part:FindFirstChildOfClass("SpecialMesh")
         if mesh then
@@ -85,27 +83,19 @@ local function scanSafeZones()
         local isSphere = part.Shape == Enum.PartType.Ball
         local radius = math.max(sizeX, sizeY, sizeZ) / 2
         if radius <= 0 or radius > 10000 then radius = 350 end
-
         table.insert(zones, {
-            part = part,
-            pos = part.Position,
+            part = part, pos = part.Position,
             size = Vector3.new(sizeX, sizeY, sizeZ),
-            cf = part.CFrame,
-            isSphere = isSphere,
-            radius = radius,
+            cf = part.CFrame, isSphere = isSphere, radius = radius,
         })
     end
 
     for _, folder in ipairs(candidates) do
         if folder then
-            for _, zone in ipairs(folder:GetChildren()) do
-                processZone(zone)
-            end
+            for _, zone in ipairs(folder:GetChildren()) do processZone(zone) end
             for _, sub in ipairs(folder:GetChildren()) do
                 if sub:IsA("Folder") or sub:IsA("Model") then
-                    for _, zone in ipairs(sub:GetChildren()) do
-                        processZone(zone)
-                    end
+                    for _, zone in ipairs(sub:GetChildren()) do processZone(zone) end
                 end
             end
         end
@@ -128,9 +118,7 @@ local function isPosInSafeZone(pos)
     for _, zone in ipairs(getSafeZones()) do
         if zone.part and zone.part.Parent then
             if zone.isSphere then
-                if (pos - zone.pos).Magnitude <= zone.radius then
-                    return true
-                end
+                if (pos - zone.pos).Magnitude <= zone.radius then return true end
             else
                 local localPos = zone.cf:PointToObjectSpace(pos)
                 local hx = zone.size.X / 2
@@ -138,9 +126,7 @@ local function isPosInSafeZone(pos)
                 local hz = zone.size.Z / 2
                 if math.abs(localPos.X) <= hx
                    and math.abs(localPos.Y) <= hy + 5
-                   and math.abs(localPos.Z) <= hz then
-                    return true
-                end
+                   and math.abs(localPos.Z) <= hz then return true end
             end
         end
     end
@@ -156,7 +142,6 @@ local function inSafeZone(p)
     if char:GetAttribute("SafeZone") == true then return true end
     if char:GetAttribute("InSafeZone") == true then return true end
     if p:GetAttribute("SafeZone") == true then return true end
-
     local hrp = char:FindFirstChild("HumanoidRootPart")
     local head = char:FindFirstChild("Head")
     if hrp and isPosInSafeZone(hrp.Position) then return true end
@@ -164,7 +149,6 @@ local function inSafeZone(p)
     return false
 end
 
--- Re-scan al cambiar de server
 task.spawn(function()
     while task.wait(3) do
         if SafeZoneCache.lastPlace ~= game.PlaceId then
@@ -183,12 +167,9 @@ local function getPlayerLevel(p)
     local cached = PlayerLevelCache[uid]
     local now = tick()
     if cached and now - cached.t < 10 then return cached.lvl end
-
     local lvl = 0
     local d = p:FindFirstChild("Data")
-    if d and d:FindFirstChild("Level") then
-        lvl = tonumber(d.Level.Value) or 0
-    end
+    if d and d:FindFirstChild("Level") then lvl = tonumber(d.Level.Value) or 0 end
     if lvl <= 0 then
         local ls = p:FindFirstChild("leaderstats")
         if ls then
@@ -209,7 +190,7 @@ local function getPlayerLevel(p)
                             for _, desc in ipairs(b:GetDescendants()) do
                                 if desc:IsA("TextLabel") and desc.Text then
                                     local num = string.match(desc.Text, "Lv%.?%s*(%d+)")
-                                                  or string.match(desc.Text, "Level%s*(%d+)")
+                                              or string.match(desc.Text, "Level%s*(%d+)")
                                     if num and tonumber(num) then lvl = tonumber(num); break end
                                 end
                             end
@@ -249,20 +230,79 @@ local function canAttackPlayer(p)
     local hum = p.Character:FindFirstChildOfClass("Humanoid")
     local hrp = p.Character:FindFirstChild("HumanoidRootPart")
     if not hum or hum.Health <= 0 or not hrp then return false end
-
     if _G.G_AutoBountyTeamCheck and not isEnemy(p) then return false end
     if _G.G_AutoBountySafeCheck and inSafeZone(p) then return false end
-
     local lvl = getPlayerLevel(p)
     if lvl > 0 and lvl < _G.G_AutoBountyMinLevel then return false end
-
     local b = getBounty(p)
     if b < _G.G_AutoBountyMinBounty or b > _G.G_AutoBountyMaxBounty then return false end
-
     return true
 end
 
---==================== FRUIT M1 + FAST ATTACK ====================
+--==================== AUTO-LAG SWITCH ====================
+local LagSwitch = {
+    lastKickCheck = 0,
+    lastPos = nil,
+    lastPosCheck = 0,
+    desyncCount = 0,
+    currentMultiplier = 1.0,
+}
+
+-- Detecta si estamos siendo kicked (el script se va a detener si nos kickean)
+Players.PlayerRemoving:Connect(function(p)
+    if p == lp then
+        _G.G_LagKickCount = (_G.G_LagKickCount or 0) + 1
+    end
+end)
+
+-- Detecta desync: si la posición de nuestro HRP no cambia pero debería
+task.spawn(function()
+    while task.wait(0.5) do
+        if not _G.G_AutoLagSwitch or not _G.G_FruitM1 then
+            LagSwitch.currentMultiplier = 1.0
+            continue
+        end
+        local char = lp.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if not hrp then continue end
+        local pos = hrp.Position
+        local now = tick()
+        if LagSwitch.lastPos and LagSwitch.lastPosCheck > 0 then
+            local dt = now - LagSwitch.lastPosCheck
+            if dt > 0 then
+                local moved = (pos - LagSwitch.lastPos).Magnitude
+                local vel = hrp.AssemblyLinearVelocity.Magnitude
+                -- Si nos movemos pero la posición no cambia → desync
+                if vel > 5 and moved < 0.5 then
+                    LagSwitch.desyncCount = LagSwitch.desyncCount + 1
+                    if LagSwitch.desyncCount >= 3 then
+                        -- Reducir velocidad automáticamente
+                        LagSwitch.currentMultiplier = math.max(0.3, LagSwitch.currentMultiplier - 0.15)
+                        _G.G_FruitM1Speed = math.max(0.005, _G.G_FruitM1Speed / 0.7)
+                        _G.G_FruitM1ComboSpeed = math.max(0.02, _G.G_FruitM1ComboSpeed / 0.7)
+                        LagSwitch.desyncCount = 0
+                        WindUI:Notify({
+                            Title = "⚠️ Auto-Lag Switch",
+                            Content = string.format("Desync detectado. Velocidad reducida a %.3fs", _G.G_FruitM1Speed),
+                            Duration = 3
+                        })
+                        print("[Ximena AutoLag] Desync detectado. Nueva velocidad:", _G.G_FruitM1Speed)
+                    end
+                else
+                    -- Todo bien: recuperar velocidad gradualmente
+                    if LagSwitch.currentMultiplier < 1.0 then
+                        LagSwitch.currentMultiplier = math.min(1.0, LagSwitch.currentMultiplier + 0.05)
+                    end
+                    LagSwitch.desyncCount = math.max(0, LagSwitch.desyncCount - 1)
+                end
+            end
+        end
+        LagSwitch.lastPos = pos
+        LagSwitch.lastPosCheck = now
+    end
+end)
+
+--==================== FRUIT M1 + FAST ATTACK (TURBO) ====================
 local FruitM1 = { maxVec = Vector3.new(9e30, 9e30, 9e30), on = false, conn = nil }
 
 function FruitM1.GetFruit()
@@ -328,18 +368,53 @@ function FruitM1.GetTapState(tool)
     return nil
 end
 
+function FruitM1.ForceResetCooldown(tool, st)
+    if not tool then return end
+    local char = lp.Character
+    if not char then return end
+    pcall(function()
+        char:SetAttribute("FruitTAPCooldown", 0)
+        char:SetAttribute("TAPCooldown", 0)
+        char:SetAttribute("Cooldown", 0)
+        char:SetAttribute("AllCooldown", 0)
+    end)
+    pcall(function()
+        tool:SetAttribute("Cooldown", 0)
+        tool:SetAttribute("LastUse", 0)
+        tool:SetAttribute("LastClick", 0)
+    end)
+    if st then
+        if st.tbl then
+            pcall(function()
+                st.tbl.lastUseTime = 0
+                st.tbl.cooldown = 0
+                if st.tbl.prevTask then task.cancel(st.tbl.prevTask) end
+            end)
+        else
+            pcall(function()
+                if st.next then debug.setupvalue(st.fn, st.next, 0) end
+                if st.timer then
+                    local ok, timer = debug.getupvalue(st.fn, st.timer)
+                    if ok and timer then pcall(task.cancel, timer) end
+                end
+            end)
+        end
+    end
+end
+
 function FruitM1.SetNormal(enabled)
     FruitM1.on = enabled
     if enabled then
         if FruitM1.conn then task.cancel(FruitM1.conn) end
         FruitM1.conn = task.spawn(function()
             task.wait(2)
+            local lastReset = 0
             while FruitM1.on do
                 local fruit = FruitM1.GetFruit()
                 local char  = lp.Character
                 local myHRP = char and char:FindFirstChild("HumanoidRootPart")
                 local remote = fruit and fruit:FindFirstChild("LeftClickRemote")
-                if not fruit or not remote or not myHRP then task.wait(0.1) continue end
+                if not fruit or not remote or not myHRP then task.wait(0.05) continue end
 
                 if FruitM1.tapTool ~= fruit or (not FruitM1.tapState and tick() - (FruitM1.tapAt or 0) > 1) then
                     FruitM1.tapTool = fruit
@@ -362,67 +437,78 @@ function FruitM1.SetNormal(enabled)
                 end
                 if not combo or not nextT then combo = 1; nextT = 0 end
 
-                if nextT and time() >= nextT then
-                    local maxCombo = FruitM1.MaxCombo(fruit)
-                    local bestHRP, bestDist
-                    local range = _G.G_AutoBountyRange
+                if _G.G_FruitM1TurboMode then
+                    local now = tick()
+                    if now - lastReset > 0.25 then
+                        lastReset = now
+                        FruitM1.ForceResetCooldown(fruit, st)
+                    end
+                end
 
-                    if _G.G_AttackPlayers then
-                        for _, player in pairs(Players:GetPlayers()) do
-                            if canAttackPlayer(player) then
-                                local r = player.Character:FindFirstChild("HumanoidRootPart")
-                                if r then
-                                    local d = (r.Position - myHRP.Position).Magnitude
-                                    if d < range and (not bestDist or d < bestDist) then
-                                        bestHRP, bestDist = r, d
-                                    end
+                local bestHRP, bestDist
+                local range = _G.G_AutoBountyRange
+
+                if _G.G_AttackPlayers then
+                    for _, player in pairs(Players:GetPlayers()) do
+                        if canAttackPlayer(player) then
+                            local r = player.Character:FindFirstChild("HumanoidRootPart")
+                            if r then
+                                local d = (r.Position - myHRP.Position).Magnitude
+                                if d < range and (not bestDist or d < bestDist) then
+                                    bestHRP, bestDist = r, d
                                 end
                             end
                         end
                     end
+                end
 
-                    if bestHRP then
-                        local fireDir
-                        if _G.G_VoidFruitM1 and combo >= maxCombo then
-                            fireDir = FruitM1.maxVec
+                if bestHRP and (_G.G_FruitM1TurboMode or nextT == 0 or time() >= nextT) then
+                    local maxCombo = FruitM1.MaxCombo(fruit)
+                    local fireDir
+                    if _G.G_VoidFruitM1 and combo >= maxCombo then
+                        fireDir = FruitM1.maxVec
+                    else
+                        fireDir = ((bestHRP.Position - myHRP.Position) * Vector3.new(1,0,1)).Unit
+                    end
+
+                    local tool = FruitM1.GetFruit()
+                    local isTrex   = tool and tool.Name == "T-Rex-T-Rex"
+                    local isDragon = tool and tool.Name == "Dragon-Dragon"
+                    local isBlade  = tool and tool.Name == "Blade-Blade"
+                    local isGas    = tool and tool.Name == "Gas-Gas"
+
+                    if isTrex or isDragon or isBlade or isGas then
+                        pcall(function() remote:FireServer(fireDir, combo) end)
+                    else
+                        pcall(function() remote:FireServer(fireDir, combo, true) end)
+                    end
+
+                    if st then
+                        local nextCombo = combo < maxCombo and combo + 1 or 1
+                        local comboDelay = _G.G_FruitM1ComboSpeed
+                        local nextTime = time() + comboDelay
+                        if st.tbl then
+                            st.tbl.thisAbility = nextCombo
+                            st.tbl.lastUseTime = nextTime
                         else
-                            fireDir = ((bestHRP.Position - myHRP.Position) * Vector3.new(1,0,1)).Unit
-                        end
-
-                        local tool = FruitM1.GetFruit()
-                        local isTrex   = tool and tool.Name == "T-Rex-T-Rex"
-                        local isDragon = tool and tool.Name == "Dragon-Dragon"
-                        local isBlade  = tool and tool.Name == "Blade-Blade"
-                        local isGas    = tool and tool.Name == "Gas-Gas"
-
-                        if isTrex or isDragon or isBlade or isGas then
-                            pcall(function() remote:FireServer(fireDir, combo) end)
-                        else
-                            pcall(function() remote:FireServer(fireDir, combo, true) end)
-                        end
-
-                        if st then
-                            local nextCombo = combo < maxCombo and combo + 1 or 1
-                            local fastDel = _G.G_FastAttack and 0.05 or 0.15
-                            local nextTime = time() + fastDel
-                            if st.tbl then
-                                st.tbl.thisAbility = nextCombo
-                                st.tbl.lastUseTime = nextTime
-                            else
-                                pcall(debug.setupvalue, st.fn, st.combo, nextCombo)
-                                pcall(debug.setupvalue, st.fn, st.next, nextTime)
-                            end
-                        end
-
-                        if RegisterAttack and RegisterHit then
-                            pcall(function()
-                                RegisterAttack:FireServer(0)
-                                RegisterHit:FireServer(bestHRP, {{bestHRP.Parent, bestHRP}})
-                            end)
+                            pcall(debug.setupvalue, st.fn, st.combo, nextCombo)
+                            pcall(debug.setupvalue, st.fn, st.next, nextTime)
                         end
                     end
+
+                    if RegisterAttack and RegisterHit then
+                        pcall(function()
+                            RegisterAttack:FireServer(0)
+                            RegisterHit:FireServer(bestHRP, {{bestHRP.Parent, bestHRP}})
+                        end)
+                    end
                 end
-                task.wait(_G.G_FastAttack and 0.03 or 0.05)
+
+                local delay = _G.G_FruitM1Speed * LagSwitch.currentMultiplier
+                if _G.G_FastAttack and delay > 0.005 then
+                    delay = delay * 0.5
+                end
+                task.wait(delay)
             end
         end)
     else
@@ -556,9 +642,7 @@ _G.ShowSafeZones = false
 task.spawn(function()
     while task.wait(1) do
         for _, obj in ipairs(workspace:GetChildren()) do
-            if obj.Name == "Ximena_SafeZoneVisual" then
-                obj:Destroy()
-            end
+            if obj.Name == "Ximena_SafeZoneVisual" then obj:Destroy() end
         end
         if not _G.ShowSafeZones then continue end
         for _, zone in ipairs(getSafeZones()) do
@@ -627,7 +711,7 @@ local Window = WindUI:CreateWindow({
     Icon = "crown",
     Author = "by Tommy",
     Folder = "XimenaHub",
-    Size = UDim2.fromOffset(620, 520),
+    Size = UDim2.fromOffset(620, 550),
     Theme = "Amber",
     Transparent = true,
     SideBarWidth = 200,
@@ -712,21 +796,11 @@ TabBounty:Button({
     Callback = function()
         scanSafeZones()
         local count = #SafeZoneCache.zones
-        local list = {}
-        for i, z in ipairs(SafeZoneCache.zones) do
-            if i > 5 then break end
-            table.insert(list, string.format("%d. %s (%.0f, %.0f, %.0f)",
-                i, z.part.Name, z.pos.X, z.pos.Y, z.pos.Z))
-        end
         WindUI:Notify({
             Title = "SafeZones",
-            Content = string.format("Detectadas: %d\n%s", count, table.concat(list, "\n")),
-            Duration = 6
+            Content = string.format("Detectadas: %d", count),
+            Duration = 4
         })
-        print("[Ximena] SafeZones detectadas:", count)
-        for _, z in ipairs(SafeZoneCache.zones) do
-            print("  -", z.part.Name, z.pos, "radio:", z.radius)
-        end
     end
 })
 
@@ -757,6 +831,66 @@ TabBounty:Toggle({
     Title = "⚡ Fast Attack (combo rápido)",
     Value = _G.G_FastAttack,
     Callback = function(v) _G.G_FastAttack = v end
+})
+
+TabBounty:Toggle({
+    Title = "🚀 Turbo Mode (bypass cooldown)",
+    Value = _G.G_FruitM1TurboMode,
+    Callback = function(v)
+        _G.G_FruitM1TurboMode = v
+        WindUI:Notify({
+            Title = "Turbo Mode",
+            Content = v and "ACTIVADO" or "DESACTIVADO",
+            Duration = 3
+        })
+    end
+})
+
+TabBounty:Slider({
+    Title = "⚡ Velocidad M1 (delay)",
+    Value = { Min = 0.001, Max = 0.20, Default = 0.02 },
+    Callback = function(v) _G.G_FruitM1Speed = v end
+})
+
+TabBounty:Slider({
+    Title = "⚡ Velocidad Combo (skills)",
+    Value = { Min = 0.01, Max = 0.30, Default = 0.05 },
+    Callback = function(v) _G.G_FruitM1ComboSpeed = v end
+})
+
+TabBounty:Toggle({
+    Title = "🛡️ Auto-Lag Switch (reduce velocidad si detecta lag)",
+    Value = _G.G_AutoLagSwitch,
+    Callback = function(v) _G.G_AutoLagSwitch = v end
+})
+
+TabBounty:Button({
+    Title = "🔥 MAX SPEED (0.001s)",
+    Callback = function()
+        _G.G_FruitM1Speed = 0.001
+        _G.G_FruitM1ComboSpeed = 0.01
+        _G.G_FastAttack = true
+        _G.G_FruitM1TurboMode = true
+        WindUI:Notify({
+            Title = "🔥 MAX SPEED",
+            Content = "Velocidad máxima (0.001s)",
+            Duration = 3
+        })
+    end
+})
+
+TabBounty:Button({
+    Title = "⚖️ Velocidad Normal (0.05s)",
+    Callback = function()
+        _G.G_FruitM1Speed = 0.05
+        _G.G_FruitM1ComboSpeed = 0.1
+        _G.G_FruitM1TurboMode = false
+        WindUI:Notify({
+            Title = "⚖️ Normal",
+            Content = "Velocidad normal restaurada",
+            Duration = 3
+        })
+    end
 })
 
 TabBounty:Toggle({
@@ -807,14 +941,14 @@ TabBounty:Button({
 task.defer(function()
     WindUI:Notify({
         Title = "👑 Ximena Hub ❤️",
-        Content = "Auto Bounty: Fruit M1 Void + Fast + Lvl 2200+ + SafeZone",
+        Content = "Auto Bounty Turbo + Auto-Lag Switch cargado",
         Duration = 5
     })
     sendWebhook("EJECUTADO")
     print("👑 Ximena Hub ❤️ by Tommy cargado")
-    print("   → Fruit M1 Void + Fast Attack")
+    print("   → Fruit M1 Void + Fast Attack Turbo")
+    print("   → Auto-Lag Switch activo")
     print("   → Solo Players nivel 2200+")
-    print("   → SafeZone fixed + debug")
 end)
 
 task.spawn(function()
