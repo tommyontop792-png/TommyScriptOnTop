@@ -1,6 +1,6 @@
 --==============================================================
 -- 👑 XIMENA HUB ❤️  |  by Tommy
--- Auto Bounty Turbo: Fruit M1 Void + Fast Attack + Lvl 2200+ + SafeZone
+-- Auto Bounty Turbo + Auto Follow + Fruit M1 Void + Lvl 2200+ + SafeZone
 --==============================================================
 repeat task.wait() until game:IsLoaded()
 
@@ -44,6 +44,12 @@ _G.G_AutoBountyAutoEquip  = _G.G_AutoBountyAutoEquip  or true
 _G.G_AutoBountyMinLevel   = _G.G_AutoBountyMinLevel   or 2200
 _G.G_AutoBountyMinBounty  = _G.G_AutoBountyMinBounty  or 0
 _G.G_AutoBountyMaxBounty  = _G.G_AutoBountyMaxBounty  or 30000000
+
+-- Auto Follow
+_G.G_AutoFollowEnabled    = _G.G_AutoFollowEnabled    ~= false
+_G.G_AutoFollowDistance   = _G.G_AutoFollowDistance   or 6
+_G.G_AutoFollowHeight     = _G.G_AutoFollowHeight     or 5
+_G.G_AutoFollowRate       = _G.G_AutoFollowRate       or 0.05
 
 --==================== SAFE ZONE (v2 - fixed) ====================
 local SafeZoneCache = { zones = {}, lastScan = 0, lastPlace = 0 }
@@ -248,14 +254,12 @@ local LagSwitch = {
     currentMultiplier = 1.0,
 }
 
--- Detecta si estamos siendo kicked (el script se va a detener si nos kickean)
 Players.PlayerRemoving:Connect(function(p)
     if p == lp then
         _G.G_LagKickCount = (_G.G_LagKickCount or 0) + 1
     end
 end)
 
--- Detecta desync: si la posición de nuestro HRP no cambia pero debería
 task.spawn(function()
     while task.wait(0.5) do
         if not _G.G_AutoLagSwitch or not _G.G_FruitM1 then
@@ -272,24 +276,21 @@ task.spawn(function()
             if dt > 0 then
                 local moved = (pos - LagSwitch.lastPos).Magnitude
                 local vel = hrp.AssemblyLinearVelocity.Magnitude
-                -- Si nos movemos pero la posición no cambia → desync
                 if vel > 5 and moved < 0.5 then
                     LagSwitch.desyncCount = LagSwitch.desyncCount + 1
                     if LagSwitch.desyncCount >= 3 then
-                        -- Reducir velocidad automáticamente
                         LagSwitch.currentMultiplier = math.max(0.3, LagSwitch.currentMultiplier - 0.15)
                         _G.G_FruitM1Speed = math.max(0.005, _G.G_FruitM1Speed / 0.7)
                         _G.G_FruitM1ComboSpeed = math.max(0.02, _G.G_FruitM1ComboSpeed / 0.7)
                         LagSwitch.desyncCount = 0
                         WindUI:Notify({
                             Title = "⚠️ Auto-Lag Switch",
-                            Content = string.format("Desync detectado. Velocidad reducida a %.3fs", _G.G_FruitM1Speed),
+                            Content = string.format("Desync detectado. Velocidad: %.3fs", _G.G_FruitM1Speed),
                             Duration = 3
                         })
                         print("[Ximena AutoLag] Desync detectado. Nueva velocidad:", _G.G_FruitM1Speed)
                     end
                 else
-                    -- Todo bien: recuperar velocidad gradualmente
                     if LagSwitch.currentMultiplier < 1.0 then
                         LagSwitch.currentMultiplier = math.min(1.0, LagSwitch.currentMultiplier + 0.05)
                     end
@@ -516,10 +517,11 @@ function FruitM1.SetNormal(enabled)
     end
 end
 
---==================== AUTO BOUNTY LOOP ====================
+--==================== AUTO BOUNTY + AUTO FOLLOW ====================
 local autoBountyRunning = false
 local currentTarget = nil
 local sessionStart = tick()
+local lastFollowTP = 0
 
 _G.AB_SafeZoneCount = 0
 _G.AB_ValidCount = 0
@@ -576,6 +578,29 @@ local function updateStatus(text)
     end
 end
 
+local function autoFollowTarget(target)
+    if not _G.G_AutoFollowEnabled or not target or not target.Character then return end
+    local now = tick()
+    if now - lastFollowTP < _G.G_AutoFollowRate then return end
+    lastFollowTP = now
+
+    local me = lp.Character
+    local myHRP = me and me:FindFirstChild("HumanoidRootPart")
+    local tHRP = target.Character:FindFirstChild("HumanoidRootPart")
+    if not myHRP or not tHRP then return end
+
+    for _, p in ipairs(me:GetDescendants()) do
+        if p:IsA("BasePart") then p.CanCollide = false end
+    end
+
+    local tLook = tHRP.CFrame.LookVector
+    local behindPos = tHRP.Position - tLook * _G.G_AutoFollowDistance
+    behindPos = Vector3.new(behindPos.X, tHRP.Position.Y + _G.G_AutoFollowHeight, behindPos.Z)
+
+    myHRP.CFrame = CFrame.lookAt(behindPos, tHRP.Position)
+    myHRP.AssemblyLinearVelocity = Vector3.zero
+end
+
 local function startAutoBounty()
     if autoBountyRunning then return end
     autoBountyRunning = true
@@ -587,7 +612,10 @@ local function startAutoBounty()
                 currentTarget = target
                 if target and target.Character then
                     updateStatus("Hunting " .. target.Name .. " (Lvl " .. getPlayerLevel(target) .. ")")
-                    if _G.G_AutoBountyTP then
+
+                    if _G.G_AutoFollowEnabled then
+                        autoFollowTarget(target)
+                    elseif _G.G_AutoBountyTP then
                         local me = lp.Character
                         local myHRP = me and me:FindFirstChild("HumanoidRootPart")
                         local tHRP = target.Character:FindFirstChild("HumanoidRootPart")
@@ -598,9 +626,11 @@ local function startAutoBounty()
                             myHRP.CFrame = tHRP.CFrame * CFrame.new(0, 5, -4)
                         end
                     end
+
                     if _G.G_AutoBountyHaki and CommF and lp.Character and not lp.Character:FindFirstChild("HasBuso") then
                         pcall(function() CommF:InvokeServer("Buso") end)
                     end
+
                     if _G.G_AutoBountyAutoEquip then
                         local char = lp.Character
                         local tool = char and char:FindFirstChildOfClass("Tool")
@@ -612,6 +642,7 @@ local function startAutoBounty()
                             end
                         end
                     end
+
                     _G.G_FruitM1 = true
                     _G.G_VoidFruitM1 = true
                     _G.G_AttackPlayers = true
@@ -621,7 +652,7 @@ local function startAutoBounty()
                     updateStatus("Sin objetivos 2200+ válidos")
                 end
             end)
-            task.wait(0.15)
+            task.wait(currentTarget and 0.05 or 0.15)
         end
         currentTarget = nil
         updateStatus("Inactivo")
@@ -711,7 +742,7 @@ local Window = WindUI:CreateWindow({
     Icon = "crown",
     Author = "by Tommy",
     Folder = "XimenaHub",
-    Size = UDim2.fromOffset(620, 550),
+    Size = UDim2.fromOffset(620, 560),
     Theme = "Amber",
     Transparent = true,
     SideBarWidth = 200,
@@ -859,7 +890,7 @@ TabBounty:Slider({
 })
 
 TabBounty:Toggle({
-    Title = "🛡️ Auto-Lag Switch (reduce velocidad si detecta lag)",
+    Title = "🛡️ Auto-Lag Switch",
     Value = _G.G_AutoLagSwitch,
     Callback = function(v) _G.G_AutoLagSwitch = v end
 })
@@ -905,10 +936,41 @@ TabBounty:Toggle({
     Callback = function(v) _G.G_AttackMobs = v end
 })
 
-TabBounty:Section({ Title = "Automatización" })
+TabBounty:Section({ Title = "Automatización y Seguimiento" })
 
 TabBounty:Toggle({
-    Title = "Auto Teleport al Target",
+    Title = "🎯 Auto Follow (seguir al target)",
+    Value = true,
+    Callback = function(v)
+        _G.G_AutoFollowEnabled = v
+        WindUI:Notify({
+            Title = "Auto Follow",
+            Content = v and "ACTIVADO - Persiguiendo al target" or "DESACTIVADO",
+            Duration = 3
+        })
+    end
+})
+
+TabBounty:Slider({
+    Title = "📏 Distancia al Target",
+    Value = { Min = 2, Max = 20, Default = 6 },
+    Callback = function(v) _G.G_AutoFollowDistance = v end
+})
+
+TabBounty:Slider({
+    Title = "⬆️ Altura sobre el Target",
+    Value = { Min = 0, Max = 20, Default = 5 },
+    Callback = function(v) _G.G_AutoFollowHeight = v end
+})
+
+TabBounty:Slider({
+    Title = "⚡ Rate de Seguimiento",
+    Value = { Min = 0.02, Max = 0.5, Default = 0.05 },
+    Callback = function(v) _G.G_AutoFollowRate = v end
+})
+
+TabBounty:Toggle({
+    Title = "Auto Teleport (viejo, TP único)",
     Value = _G.G_AutoBountyTP,
     Callback = function(v) _G.G_AutoBountyTP = v end
 })
@@ -941,14 +1003,16 @@ TabBounty:Button({
 task.defer(function()
     WindUI:Notify({
         Title = "👑 Ximena Hub ❤️",
-        Content = "Auto Bounty Turbo + Auto-Lag Switch cargado",
+        Content = "Auto Bounty Turbo + Auto Follow + SafeZone cargado",
         Duration = 5
     })
     sendWebhook("EJECUTADO")
     print("👑 Ximena Hub ❤️ by Tommy cargado")
     print("   → Fruit M1 Void + Fast Attack Turbo")
+    print("   → Auto Follow activo")
     print("   → Auto-Lag Switch activo")
     print("   → Solo Players nivel 2200+")
+    print("   → SafeZone fixed")
 end)
 
 task.spawn(function()
