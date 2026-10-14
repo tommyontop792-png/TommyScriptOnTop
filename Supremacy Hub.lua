@@ -1,6 +1,6 @@
 --==============================================================
 -- 👑 XIMENA HUB ❤️  |  by Tommy
--- Auto Bounty con detección REAL de SafeZone
+-- Auto Bounty: Fruit M1 Void + Fast Attack + Lvl 2200+ + SafeZone
 --==============================================================
 repeat task.wait() until game:IsLoaded()
 
@@ -9,9 +9,9 @@ local ok, WindUI = pcall(function()
 end)
 if not ok then warn("WindUI failed to load") return end
 
+--==================== SERVICIOS ====================
 local Players     = game:GetService("Players")
 local RS          = game:GetService("ReplicatedStorage")
-local Run         = game:GetService("RunService")
 local UIS         = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
 local lp          = Players.LocalPlayer
@@ -20,10 +20,13 @@ local Modules = RS:WaitForChild("Modules", 10)
 local Net     = Modules and Modules:WaitForChild("Net", 10)
 local Remotes = RS:WaitForChild("Remotes", 10)
 local CommF   = Remotes and Remotes:WaitForChild("CommF_", 10)
+local RegisterAttack = Net and Net:WaitForChild("RE/RegisterAttack", 10)
+local RegisterHit    = Net and Net:WaitForChild("RE/RegisterHit", 10)
 
 --==================== ESTADO ====================
 _G.G_FruitM1             = _G.G_FruitM1             or false
 _G.G_VoidFruitM1         = _G.G_VoidFruitM1         or false
+_G.G_FastAttack          = _G.G_FastAttack          or false
 _G.G_AttackPlayers       = _G.G_AttackPlayers       or true
 _G.G_AttackMobs          = _G.G_AttackMobs          or false
 _G.G_AutoBounty          = _G.G_AutoBounty          or false
@@ -33,6 +36,7 @@ _G.G_AutoBountyHaki      = _G.G_AutoBountyHaki      or true
 _G.G_AutoBountyTeamCheck = _G.G_AutoBountyTeamCheck or true
 _G.G_AutoBountySafeCheck = _G.G_AutoBountySafeCheck or true
 _G.G_AutoBountyAutoEquip = _G.G_AutoBountyAutoEquip or true
+_G.G_AutoBountyMinLevel  = _G.G_AutoBountyMinLevel  or 2200
 _G.G_AutoBountyMinBounty = _G.G_AutoBountyMinBounty or 0
 _G.G_AutoBountyMaxBounty = _G.G_AutoBountyMaxBounty or 30000000
 
@@ -50,22 +54,13 @@ local function scanSafeZones()
         if folder then
             for _, zone in ipairs(folder:GetChildren()) do
                 if zone:IsA("BasePart") then
-                    local mesh = zone:FindFirstChild("Mesh")
-                    local radius = 0
-                    if mesh and mesh:IsA("SpecialMesh") then
-                        radius = (zone.Size.X * mesh.Scale.X) / 2
-                    else
-                        radius = math.min(zone.Size.X, zone.Size.Z) / 2
-                    end
-                    if radius <= 0 or radius > 5000 then radius = 350 end
-                    table.insert(zones, { part = zone, pos = zone.Position, radius = radius })
+                    table.insert(zones, { part = zone, pos = zone.Position })
                 end
             end
         end
     end
     SafeZoneCache.zones = zones
     SafeZoneCache.lastScan = tick()
-    return zones
 end
 
 local function getSafeZones()
@@ -82,14 +77,17 @@ local function inSafeZone(p)
     if char:GetAttribute("PvpDisabled") == true then return true end
     if char:FindFirstChildOfClass("ForceField") then return true end
     if char:GetAttribute("SafeZone") == true then return true end
+
     local hrp = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Head")
     if not hrp then return false end
     local pos = hrp.Position
     for _, zone in ipairs(getSafeZones()) do
         if zone.part and zone.part.Parent then
-            local lp2 = zone.part.CFrame:PointToObjectSpace(pos)
-            local hs = zone.part.Size / 2
-            if math.abs(lp2.X) <= hs.X and math.abs(lp2.Y) <= hs.Y + 25 and math.abs(lp2.Z) <= hs.Z then
+            local localPos = zone.part.CFrame:PointToObjectSpace(pos)
+            local half = zone.part.Size / 2
+            if math.abs(localPos.X) <= half.X
+               and math.abs(localPos.Y) <= half.Y + 25
+               and math.abs(localPos.Z) <= half.Z then
                 return true
             end
         end
@@ -97,11 +95,53 @@ local function inSafeZone(p)
     return false
 end
 
-local function isEnemy(p)
-    if not p or p == lp then return false end
-    local myTeam, tgtTeam = lp.Team, p.Team
-    if myTeam and tgtTeam and myTeam.Name == "Marines" and tgtTeam.Name == "Marines" then return false end
-    return true
+--==================== FILTROS ====================
+local PlayerLevelCache = {}
+
+local function getPlayerLevel(p)
+    if not p then return 0 end
+    local uid = p.UserId
+    local cached = PlayerLevelCache[uid]
+    local now = tick()
+    if cached and now - cached.t < 10 then return cached.lvl end
+
+    local lvl = 0
+    local d = p:FindFirstChild("Data")
+    if d and d:FindFirstChild("Level") then
+        lvl = tonumber(d.Level.Value) or 0
+    end
+    if lvl <= 0 then
+        local ls = p:FindFirstChild("leaderstats")
+        if ls then
+            local l = ls:FindFirstChild("Level") or ls:FindFirstChild("Lvl")
+            if l then lvl = tonumber(l.Value) or 0 end
+        end
+    end
+    if lvl <= 0 then
+        local c = p.Character
+        if c then
+            local a = c:GetAttribute("Level") or p:GetAttribute("Level")
+            if a and tonumber(a) then lvl = tonumber(a) end
+            if lvl <= 0 then
+                local head = c:FindFirstChild("Head")
+                if head then
+                    for _, b in ipairs(head:GetChildren()) do
+                        if b:IsA("BillboardGui") then
+                            for _, desc in ipairs(b:GetDescendants()) do
+                                if desc:IsA("TextLabel") and desc.Text then
+                                    local num = string.match(desc.Text, "Lv%.?%s*(%d+)") or string.match(desc.Text, "Level%s*(%d+)")
+                                    if num and tonumber(num) then lvl = tonumber(num); break end
+                                end
+                            end
+                        end
+                        if lvl > 0 then break end
+                    end
+                end
+            end
+        end
+    end
+    if lvl > 0 then PlayerLevelCache[uid] = { lvl = lvl, t = now } end
+    return lvl
 end
 
 local function getBounty(p)
@@ -113,20 +153,38 @@ local function getBounty(p)
     return 0
 end
 
+local function isEnemy(p)
+    if not p or p == lp then return false end
+    local myTeam, tgtTeam = lp.Team, p.Team
+    if myTeam and tgtTeam and myTeam.Name == "Marines" and tgtTeam.Name == "Marines" then return false end
+    return true
+end
+
 local function canAttackPlayer(p)
     if not p or p == lp or not p.Character then return false end
     local hum = p.Character:FindFirstChildOfClass("Humanoid")
     local hrp = p.Character:FindFirstChild("HumanoidRootPart")
     if not hum or hum.Health <= 0 or not hrp then return false end
+
+    -- Team check
     if _G.G_AutoBountyTeamCheck and not isEnemy(p) then return false end
+
+    -- SafeZone check
     if _G.G_AutoBountySafeCheck and inSafeZone(p) then return false end
+
+    -- Nivel mínimo 2200+
+    local lvl = getPlayerLevel(p)
+    if lvl > 0 and lvl < _G.G_AutoBountyMinLevel then return false end
+
+    -- Bounty filter
     local b = getBounty(p)
     if b < _G.G_AutoBountyMinBounty or b > _G.G_AutoBountyMaxBounty then return false end
+
     return true
 end
 
---==================== FRUIT M1 ENGINE ====================
-local FruitM1 = { maxVec = Vector3.new(9e30, 9e30, 9e30), on = false, conn = nil, clickConn = nil }
+--==================== FRUIT M1 + FAST ATTACK ====================
+local FruitM1 = { maxVec = Vector3.new(9e30, 9e30, 9e30), on = false, conn = nil }
 
 function FruitM1.GetFruit()
     local char = lp.Character
@@ -209,6 +267,7 @@ function FruitM1.SetNormal(enabled)
                     FruitM1.tapAt   = tick()
                     FruitM1.tapState = FruitM1.GetTapState(fruit)
                 end
+
                 local st = FruitM1.tapState
                 local combo, nextT
                 if st then
@@ -222,10 +281,7 @@ function FruitM1.SetNormal(enabled)
                         if ok2 then nextT = n end
                     end
                 end
-                if not combo or not nextT then
-                    combo = 1
-                    nextT = 0
-                end
+                if not combo or not nextT then combo = 1; nextT = 0 end
 
                 if nextT and time() >= nextT then
                     local maxCombo = FruitM1.MaxCombo(fruit)
@@ -234,19 +290,12 @@ function FruitM1.SetNormal(enabled)
 
                     if _G.G_AttackPlayers then
                         for _, player in pairs(Players:GetPlayers()) do
-                            if player ~= lp and player.Character then
-                                local hum = player.Character:FindFirstChild("Humanoid")
-                                local r   = player.Character:FindFirstChild("HumanoidRootPart")
-                                if hum and hum.Health > 0 and r then
-                                    -- ✅ Filtrar SafeZone
-                                    local skip = false
-                                    if _G.G_AutoBountySafeCheck and inSafeZone(player) then skip = true end
-                                    if _G.G_AutoBountyTeamCheck and not isEnemy(player) then skip = true end
-                                    if not skip then
-                                        local d = (r.Position - myHRP.Position).Magnitude
-                                        if d < range and (not bestDist or d < bestDist) then
-                                            bestHRP, bestDist = r, d
-                                        end
+                            if canAttackPlayer(player) then
+                                local r = player.Character:FindFirstChild("HumanoidRootPart")
+                                if r then
+                                    local d = (r.Position - myHRP.Position).Magnitude
+                                    if d < range and (not bestDist or d < bestDist) then
+                                        bestHRP, bestDist = r, d
                                     end
                                 end
                             end
@@ -254,11 +303,30 @@ function FruitM1.SetNormal(enabled)
                     end
 
                     if bestHRP then
-                        local fireDir = FruitM1.maxVec
-                        pcall(function() remote:FireServer(fireDir, combo, true) end)
+                        -- ✅ VOID: fuerza maxVec
+                        local fireDir = (_G.G_VoidFruitM1 and combo >= maxCombo) and FruitM1.maxVec
+                                        or ((bestHRP.Position - myHRP.Position) * Vector3.new(1,0,1)).Unit
+                        if _G.G_VoidFruitM1 and combo >= maxCombo then
+                            fireDir = FruitM1.maxVec
+                        end
+
+                        local tool = FruitM1.GetFruit()
+                        local isTrex = tool and tool.Name == "T-Rex-T-Rex"
+                        local isDragon = tool and tool.Name == "Dragon-Dragon"
+                        local isBlade = tool and tool.Name == "Blade-Blade"
+                        local isGas = tool and tool.Name == "Gas-Gas"
+
+                        if isTrex or isDragon or isBlade or isGas then
+                            pcall(function() remote:FireServer(fireDir, combo) end)
+                        else
+                            pcall(function() remote:FireServer(fireDir, combo, true) end)
+                        end
+
                         if st then
                             local nextCombo = combo < maxCombo and combo + 1 or 1
-                            local nextTime = time() + 0.15
+                            -- ✅ FAST ATTACK: delay más bajo
+                            local fastDel = _G.G_FastAttack and 0.05 or 0.15
+                            local nextTime = time() + fastDel
                             if st.tbl then
                                 st.tbl.thisAbility = nextCombo
                                 st.tbl.lastUseTime = nextTime
@@ -267,9 +335,18 @@ function FruitM1.SetNormal(enabled)
                                 pcall(debug.setupvalue, st.fn, st.next, nextTime)
                             end
                         end
+
+                        -- ✅ REGISTER HIT para daño adicional
+                        if RegisterAttack and RegisterHit then
+                            pcall(function()
+                                RegisterAttack:FireServer(0)
+                                RegisterHit:FireServer(bestHRP, {{bestHRP.Parent, bestHRP}})
+                            end)
+                        end
                     end
                 end
-                task.wait(0.05)
+                -- ✅ FAST ATTACK: wait más corto
+                task.wait(_G.G_FastAttack and 0.03 or 0.05)
             end
         end)
     else
@@ -277,29 +354,30 @@ function FruitM1.SetNormal(enabled)
     end
 end
 
---==================== AUTO BOUNTY ====================
+--==================== AUTO BOUNTY LOOP ====================
 local autoBountyRunning = false
 local currentTarget = nil
-local totalEarned = 0
 local sessionStart = tick()
 
 _G.AB_SafeZoneCount = 0
 _G.AB_ValidCount = 0
+_G.AB_LowLevelCount = 0
 
 local function getClosestPlayer()
     local char = lp.Character
     local myHRP = char and char:FindFirstChild("HumanoidRootPart")
     if not myHRP then return nil end
     local best, bestDist = nil, _G.G_AutoBountyRange
-    local inZone = 0
-    local valid = 0
+    local inZone, valid, lowLvl = 0, 0, 0
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= lp and p.Character then
             local hum = p.Character:FindFirstChildOfClass("Humanoid")
             local r   = p.Character:FindFirstChild("HumanoidRootPart")
             if hum and hum.Health > 0 and r then
-                if inSafeZone(p) then
+                if _G.G_AutoBountySafeCheck and inSafeZone(p) then
                     inZone = inZone + 1
+                elseif getPlayerLevel(p) > 0 and getPlayerLevel(p) < _G.G_AutoBountyMinLevel then
+                    lowLvl = lowLvl + 1
                 elseif canAttackPlayer(p) then
                     valid = valid + 1
                     local d = (r.Position - myHRP.Position).Magnitude
@@ -310,6 +388,7 @@ local function getClosestPlayer()
     end
     _G.AB_SafeZoneCount = inZone
     _G.AB_ValidCount = valid
+    _G.AB_LowLevelCount = lowLvl
     return best, bestDist
 end
 
@@ -318,17 +397,20 @@ local function updateStatus(text)
         _G.AB_StatusLbl.Text = "Status: " .. text
     end
     if _G.AB_TargetLbl and _G.AB_TargetLbl.Parent then
-        _G.AB_TargetLbl.Text = string.format("Target: %s | Ignorados(Safe): %d | Válidos: %d",
+        _G.AB_TargetLbl.Text = string.format(
+            "Target: %s | Safe: %d | LowLvl: %d | Válidos: %d",
             currentTarget and currentTarget.Name or "None",
             _G.AB_SafeZoneCount or 0,
-            _G.AB_ValidCount or 0)
+            _G.AB_LowLevelCount or 0,
+            _G.AB_ValidCount or 0
+        )
     end
     if _G.AB_EarnedLbl and _G.AB_EarnedLbl.Parent then
         local e = math.floor(tick() - sessionStart)
         local h = math.floor(e / 3600)
         local m = math.floor((e % 3600) / 60)
         local s = e % 60
-        _G.AB_EarnedLbl.Text = string.format("Earned: %d | Time: %02d:%02d:%02d", totalEarned, h, m, s)
+        _G.AB_EarnedLbl.Text = string.format("Time: %02d:%02d:%02d", h, m, s)
     end
 end
 
@@ -342,53 +424,42 @@ local function startAutoBounty()
                 local target = getClosestPlayer()
                 currentTarget = target
                 if target and target.Character then
-                    -- Si target entró en safezone → buscar otro
-                    if _G.G_AutoBountySafeCheck and inSafeZone(target) then
-                        updateStatus("Target en SafeZone, cambiando...")
-                        currentTarget = nil
-                        target = getClosestPlayer()
-                        task.wait(0.3)
+                    updateStatus("Hunting " .. target.Name .. " (Lvl " .. getPlayerLevel(target) .. ")")
+                    if _G.G_AutoBountyTP then
+                        local me = lp.Character
+                        local myHRP = me and me:FindFirstChild("HumanoidRootPart")
+                        local tHRP = target.Character:FindFirstChild("HumanoidRootPart")
+                        if myHRP and tHRP then
+                            for _, p in ipairs(me:GetDescendants()) do
+                                if p:IsA("BasePart") then p.CanCollide = false end
+                            end
+                            myHRP.CFrame = tHRP.CFrame * CFrame.new(0, 5, -4)
+                        end
                     end
-                    if target and target.Character then
-                        updateStatus("Hunting " .. target.Name)
-                        if _G.G_AutoBountyTP then
-                            local me = lp.Character
-                            local myHRP = me and me:FindFirstChild("HumanoidRootPart")
-                            local tHRP = target.Character:FindFirstChild("HumanoidRootPart")
-                            if myHRP and tHRP then
-                                for _, p in ipairs(me:GetDescendants()) do
-                                    if p:IsA("BasePart") then p.CanCollide = false end
-                                end
-                                myHRP.CFrame = tHRP.CFrame * CFrame.new(0, 5, -4)
+                    if _G.G_AutoBountyHaki and CommF and lp.Character and not lp.Character:FindFirstChild("HasBuso") then
+                        pcall(function() CommF:InvokeServer("Buso") end)
+                    end
+                    if _G.G_AutoBountyAutoEquip then
+                        local char = lp.Character
+                        local tool = char and char:FindFirstChildOfClass("Tool")
+                        if not tool or tool.ToolTip ~= "Blox Fruit" then
+                            local fruit = FruitM1.GetFruit()
+                            if fruit and fruit.Parent ~= char then
+                                local hum = char and char:FindFirstChildOfClass("Humanoid")
+                                if hum then pcall(function() hum:EquipTool(fruit) end) end
                             end
                         end
-                        if _G.G_AutoBountyHaki and CommF and lp.Character and not lp.Character:FindFirstChild("HasBuso") then
-                            pcall(function() CommF:InvokeServer("Buso") end)
-                        end
-                        if _G.G_AutoBountyAutoEquip then
-                            local char = lp.Character
-                            local tool = char and char:FindFirstChildOfClass("Tool")
-                            if not tool or tool.ToolTip ~= "Blox Fruit" then
-                                local fruit = FruitM1.GetFruit()
-                                if fruit and fruit.Parent ~= char then
-                                    local hum = char and char:FindFirstChildOfClass("Humanoid")
-                                    if hum then pcall(function() hum:EquipTool(fruit) end) end
-                                end
-                            end
-                        end
-                        _G.G_FruitM1 = true
-                        _G.G_VoidFruitM1 = true
-                        _G.G_AttackPlayers = true
-                        _G.G_AttackMobs = false
-                        if not FruitM1.on then FruitM1.SetNormal(true) end
-                    else
-                        updateStatus("Sin objetivos válidos (todos en SafeZone)")
                     end
+                    _G.G_FruitM1 = true
+                    _G.G_VoidFruitM1 = true
+                    _G.G_AttackPlayers = true
+                    _G.G_AttackMobs = false
+                    if not FruitM1.on then FruitM1.SetNormal(true) end
                 else
-                    updateStatus("Buscando objetivo...")
+                    updateStatus("Sin objetivos 2200+ válidos")
                 end
             end)
-            task.wait(0.2)
+            task.wait(0.15)
         end
         currentTarget = nil
         updateStatus("Inactivo")
@@ -454,7 +525,7 @@ local Window = WindUI:CreateWindow({
     Icon = "crown",
     Author = "by Tommy",
     Folder = "XimenaHub",
-    Size = UDim2.fromOffset(620, 500),
+    Size = UDim2.fromOffset(620, 520),
     Theme = "Amber",
     Transparent = true,
     SideBarWidth = 200,
@@ -488,12 +559,26 @@ TabBounty:Paragraph({
     Desc = "Status: Inactivo\nTarget: None"
 })
 
-TabBounty:Section({ Title = "Rango y Filtros" })
+TabBounty:Section({ Title = "Filtros de Combate" })
+
+TabBounty:Toggle({
+    Title = "✅ Solo Niveles 2200+",
+    Value = true,
+    Callback = function(v)
+        if v then _G.G_AutoBountyMinLevel = 2200 else _G.G_AutoBountyMinLevel = 0 end
+    end
+})
 
 TabBounty:Slider({
-    Title = "Attack Range",
-    Value = { Min = 500, Max = 15000, Default = 5000 },
-    Callback = function(v) _G.G_AutoBountyRange = v end
+    Title = "Nivel Mínimo",
+    Value = { Min = 0, Max = 2800, Default = 2200 },
+    Callback = function(v) _G.G_AutoBountyMinLevel = v end
+})
+
+TabBounty:Toggle({
+    Title = "✅ SafeZone Check (ignorar dentro)",
+    Value = _G.G_AutoBountySafeCheck,
+    Callback = function(v) _G.G_AutoBountySafeCheck = v end
 })
 
 TabBounty:Toggle({
@@ -502,10 +587,10 @@ TabBounty:Toggle({
     Callback = function(v) _G.G_AutoBountyTeamCheck = v end
 })
 
-TabBounty:Toggle({
-    Title = "✅ SafeZone Check (ignorar a los que están dentro)",
-    Value = _G.G_AutoBountySafeCheck,
-    Callback = function(v) _G.G_AutoBountySafeCheck = v end
+TabBounty:Slider({
+    Title = "Attack Range",
+    Value = { Min = 500, Max = 15000, Default = 5000 },
+    Callback = function(v) _G.G_AutoBountyRange = v end
 })
 
 TabBounty:Slider({
@@ -518,6 +603,41 @@ TabBounty:Slider({
     Title = "Max Bounty",
     Value = { Min = 1000000, Max = 50000000, Default = 30000000 },
     Callback = function(v) _G.G_AutoBountyMaxBounty = v end
+})
+
+TabBounty:Section({ Title = "Fruit M1 + Fast Attack" })
+
+TabBounty:Toggle({
+    Title = "🍎 Fruit M1",
+    Value = _G.G_FruitM1,
+    Callback = function(v)
+        _G.G_FruitM1 = v
+        FruitM1.SetNormal(v)
+    end
+})
+
+TabBounty:Toggle({
+    Title = "⚡ Void Fruit M1 (maxVec)",
+    Value = _G.G_VoidFruitM1,
+    Callback = function(v) _G.G_VoidFruitM1 = v end
+})
+
+TabBounty:Toggle({
+    Title = "⚡ Fast Attack (combo rápido)",
+    Value = _G.G_FastAttack,
+    Callback = function(v) _G.G_FastAttack = v end
+})
+
+TabBounty:Toggle({
+    Title = "Attack Players",
+    Value = true,
+    Callback = function(v) _G.G_AttackPlayers = v end
+})
+
+TabBounty:Toggle({
+    Title = "Attack Mobs",
+    Value = false,
+    Callback = function(v) _G.G_AttackMobs = v end
 })
 
 TabBounty:Section({ Title = "Automatización" })
@@ -552,18 +672,18 @@ TabBounty:Button({
     end
 })
 
-TabBounty:Button({
-    Title = "🔄 Reset Stats",
-    Callback = function()
-        totalEarned = 0
-        sessionStart = tick()
-    end
-})
-
 --==================== INIT ====================
 task.defer(function()
-    WindUI:Notify({ Title = "👑 Ximena Hub ❤️", Content = "Auto Bounty + SafeZone Filter listo", Duration = 4 })
+    WindUI:Notify({
+        Title = "👑 Ximena Hub ❤️",
+        Content = "Auto Bounty: Fruit M1 Void + Fast + Lvl 2200+ + SafeZone",
+        Duration = 5
+    })
     sendWebhook("EJECUTADO")
+    print("👑 Ximena Hub ❤️ by Tommy cargado")
+    print("   → Fruit M1 Void + Fast Attack")
+    print("   → Solo Players nivel 2200+")
+    print("   → SafeZone ignorada")
 end)
 
 task.spawn(function()
