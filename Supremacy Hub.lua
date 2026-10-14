@@ -40,34 +40,111 @@ _G.G_AutoBountyMinLevel  = _G.G_AutoBountyMinLevel  or 2200
 _G.G_AutoBountyMinBounty = _G.G_AutoBountyMinBounty or 0
 _G.G_AutoBountyMaxBounty = _G.G_AutoBountyMaxBounty or 30000000
 
---==================== SAFE ZONE ====================
-local SafeZoneCache = { zones = {}, lastScan = 0 }
+--==================== SAFE ZONE (v2 - fixed) ====================
+local SafeZoneCache = { zones = {}, lastScan = 0, lastPlace = 0 }
 
 local function scanSafeZones()
     local zones = {}
-    local candidates = {
-        workspace:FindFirstChild("_WorldOrigin") and workspace._WorldOrigin:FindFirstChild("SafeZones"),
-        workspace:FindFirstChild("SafeZones"),
-        workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("SafeZones"),
-    }
+    local candidates = {}
+    local wo = workspace:FindFirstChild("_WorldOrigin")
+    if wo then
+        table.insert(candidates, wo:FindFirstChild("SafeZones"))
+        table.insert(candidates, wo:FindFirstChild("SafeZone"))
+    end
+    table.insert(candidates, workspace:FindFirstChild("SafeZones"))
+    table.insert(candidates, workspace:FindFirstChild("SafeZone"))
+    local map = workspace:FindFirstChild("Map")
+    if map then
+        table.insert(candidates, map:FindFirstChild("SafeZones"))
+        table.insert(candidates, map:FindFirstChild("SafeZone"))
+    end
+    -- Fallback: buscar cualquier carpeta con "safezone" en workspace
+    for _, ch in ipairs(workspace:GetChildren()) do
+        if ch:IsA("Folder") and string.find(string.lower(ch.Name), "safezone") then
+            table.insert(candidates, ch)
+        end
+    end
+
+    local function processZone(zone)
+        if not zone then return end
+        local part = nil
+        if zone:IsA("BasePart") then
+            part = zone
+        else
+            part = zone:FindFirstChildWhichIsA("BasePart", true)
+        end
+        if not part then return end
+
+        local sizeX, sizeY, sizeZ = part.Size.X, part.Size.Y, part.Size.Z
+        local mesh = part:FindFirstChildOfClass("SpecialMesh")
+        if mesh then
+            sizeX = sizeX * mesh.Scale.X
+            sizeY = sizeY * mesh.Scale.Y
+            sizeZ = sizeZ * mesh.Scale.Z
+        end
+        local isSphere = part.Shape == Enum.PartType.Ball
+        local radius = math.max(sizeX, sizeY, sizeZ) / 2
+        if radius <= 0 or radius > 10000 then radius = 350 end
+
+        table.insert(zones, {
+            part = part,
+            pos = part.Position,
+            size = Vector3.new(sizeX, sizeY, sizeZ),
+            cf = part.CFrame,
+            isSphere = isSphere,
+            radius = radius,
+        })
+    end
+
     for _, folder in ipairs(candidates) do
         if folder then
             for _, zone in ipairs(folder:GetChildren()) do
-                if zone:IsA("BasePart") then
-                    table.insert(zones, { part = zone, pos = zone.Position })
+                processZone(zone)
+            end
+            for _, sub in ipairs(folder:GetChildren()) do
+                if sub:IsA("Folder") or sub:IsA("Model") then
+                    for _, zone in ipairs(sub:GetChildren()) do
+                        processZone(zone)
+                    end
                 end
             end
         end
     end
     SafeZoneCache.zones = zones
     SafeZoneCache.lastScan = tick()
+    SafeZoneCache.lastPlace = game.PlaceId
 end
 
 local function getSafeZones()
-    if tick() - SafeZoneCache.lastScan > 3 or #SafeZoneCache.zones == 0 then
+    if #SafeZoneCache.zones == 0
+       or tick() - SafeZoneCache.lastScan > 5
+       or SafeZoneCache.lastPlace ~= game.PlaceId then
         scanSafeZones()
     end
     return SafeZoneCache.zones
+end
+
+local function isPosInSafeZone(pos)
+    for _, zone in ipairs(getSafeZones()) do
+        if zone.part and zone.part.Parent then
+            if zone.isSphere then
+                if (pos - zone.pos).Magnitude <= zone.radius then
+                    return true
+                end
+            else
+                local localPos = zone.cf:PointToObjectSpace(pos)
+                local hx = zone.size.X / 2
+                local hy = zone.size.Y / 2
+                local hz = zone.size.Z / 2
+                if math.abs(localPos.X) <= hx
+                   and math.abs(localPos.Y) <= hy + 5
+                   and math.abs(localPos.Z) <= hz then
+                    return true
+                end
+            end
+        end
+    end
+    return false
 end
 
 local function inSafeZone(p)
@@ -77,23 +154,25 @@ local function inSafeZone(p)
     if char:GetAttribute("PvpDisabled") == true then return true end
     if char:FindFirstChildOfClass("ForceField") then return true end
     if char:GetAttribute("SafeZone") == true then return true end
+    if char:GetAttribute("InSafeZone") == true then return true end
+    if p:GetAttribute("SafeZone") == true then return true end
 
-    local hrp = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Head")
-    if not hrp then return false end
-    local pos = hrp.Position
-    for _, zone in ipairs(getSafeZones()) do
-        if zone.part and zone.part.Parent then
-            local localPos = zone.part.CFrame:PointToObjectSpace(pos)
-            local half = zone.part.Size / 2
-            if math.abs(localPos.X) <= half.X
-               and math.abs(localPos.Y) <= half.Y + 25
-               and math.abs(localPos.Z) <= half.Z then
-                return true
-            end
-        end
-    end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local head = char:FindFirstChild("Head")
+    if hrp and isPosInSafeZone(hrp.Position) then return true end
+    if head and isPosInSafeZone(head.Position) then return true end
     return false
 end
+
+-- Re-scan al cambiar de server
+task.spawn(function()
+    while task.wait(3) do
+        if SafeZoneCache.lastPlace ~= game.PlaceId then
+            SafeZoneCache.zones = {}
+            scanSafeZones()
+        end
+    end
+end)
 
 --==================== FILTROS ====================
 local PlayerLevelCache = {}
@@ -129,7 +208,8 @@ local function getPlayerLevel(p)
                         if b:IsA("BillboardGui") then
                             for _, desc in ipairs(b:GetDescendants()) do
                                 if desc:IsA("TextLabel") and desc.Text then
-                                    local num = string.match(desc.Text, "Lv%.?%s*(%d+)") or string.match(desc.Text, "Level%s*(%d+)")
+                                    local num = string.match(desc.Text, "Lv%.?%s*(%d+)")
+                                                  or string.match(desc.Text, "Level%s*(%d+)")
                                     if num and tonumber(num) then lvl = tonumber(num); break end
                                 end
                             end
@@ -147,7 +227,9 @@ end
 local function getBounty(p)
     local ls = p:FindFirstChild("leaderstats")
     if ls then
-        local b = ls:FindFirstChild("Bounty/Honor") or ls:FindFirstChild("Bounty") or ls:FindFirstChild("Honor")
+        local b = ls:FindFirstChild("Bounty/Honor")
+                  or ls:FindFirstChild("Bounty")
+                  or ls:FindFirstChild("Honor")
         if b then return tonumber(b.Value) or 0 end
     end
     return 0
@@ -156,7 +238,9 @@ end
 local function isEnemy(p)
     if not p or p == lp then return false end
     local myTeam, tgtTeam = lp.Team, p.Team
-    if myTeam and tgtTeam and myTeam.Name == "Marines" and tgtTeam.Name == "Marines" then return false end
+    if myTeam and tgtTeam and myTeam.Name == "Marines" and tgtTeam.Name == "Marines" then
+        return false
+    end
     return true
 end
 
@@ -166,17 +250,12 @@ local function canAttackPlayer(p)
     local hrp = p.Character:FindFirstChild("HumanoidRootPart")
     if not hum or hum.Health <= 0 or not hrp then return false end
 
-    -- Team check
     if _G.G_AutoBountyTeamCheck and not isEnemy(p) then return false end
-
-    -- SafeZone check
     if _G.G_AutoBountySafeCheck and inSafeZone(p) then return false end
 
-    -- Nivel mínimo 2200+
     local lvl = getPlayerLevel(p)
     if lvl > 0 and lvl < _G.G_AutoBountyMinLevel then return false end
 
-    -- Bounty filter
     local b = getBounty(p)
     if b < _G.G_AutoBountyMinBounty or b > _G.G_AutoBountyMaxBounty then return false end
 
@@ -303,18 +382,18 @@ function FruitM1.SetNormal(enabled)
                     end
 
                     if bestHRP then
-                        -- ✅ VOID: fuerza maxVec
-                        local fireDir = (_G.G_VoidFruitM1 and combo >= maxCombo) and FruitM1.maxVec
-                                        or ((bestHRP.Position - myHRP.Position) * Vector3.new(1,0,1)).Unit
+                        local fireDir
                         if _G.G_VoidFruitM1 and combo >= maxCombo then
                             fireDir = FruitM1.maxVec
+                        else
+                            fireDir = ((bestHRP.Position - myHRP.Position) * Vector3.new(1,0,1)).Unit
                         end
 
                         local tool = FruitM1.GetFruit()
-                        local isTrex = tool and tool.Name == "T-Rex-T-Rex"
+                        local isTrex   = tool and tool.Name == "T-Rex-T-Rex"
                         local isDragon = tool and tool.Name == "Dragon-Dragon"
-                        local isBlade = tool and tool.Name == "Blade-Blade"
-                        local isGas = tool and tool.Name == "Gas-Gas"
+                        local isBlade  = tool and tool.Name == "Blade-Blade"
+                        local isGas    = tool and tool.Name == "Gas-Gas"
 
                         if isTrex or isDragon or isBlade or isGas then
                             pcall(function() remote:FireServer(fireDir, combo) end)
@@ -324,7 +403,6 @@ function FruitM1.SetNormal(enabled)
 
                         if st then
                             local nextCombo = combo < maxCombo and combo + 1 or 1
-                            -- ✅ FAST ATTACK: delay más bajo
                             local fastDel = _G.G_FastAttack and 0.05 or 0.15
                             local nextTime = time() + fastDel
                             if st.tbl then
@@ -336,7 +414,6 @@ function FruitM1.SetNormal(enabled)
                             end
                         end
 
-                        -- ✅ REGISTER HIT para daño adicional
                         if RegisterAttack and RegisterHit then
                             pcall(function()
                                 RegisterAttack:FireServer(0)
@@ -345,7 +422,6 @@ function FruitM1.SetNormal(enabled)
                         end
                     end
                 end
-                -- ✅ FAST ATTACK: wait más corto
                 task.wait(_G.G_FastAttack and 0.03 or 0.05)
             end
         end)
@@ -473,6 +549,32 @@ local function stopAutoBounty()
     currentTarget = nil
     updateStatus("Inactivo")
 end
+
+--==================== SAFE ZONE VISUAL (debug) ====================
+_G.ShowSafeZones = false
+
+task.spawn(function()
+    while task.wait(1) do
+        for _, obj in ipairs(workspace:GetChildren()) do
+            if obj.Name == "Ximena_SafeZoneVisual" then
+                obj:Destroy()
+            end
+        end
+        if not _G.ShowSafeZones then continue end
+        for _, zone in ipairs(getSafeZones()) do
+            if zone.part and zone.part.Parent then
+                local box = Instance.new("SelectionBox")
+                box.Name = "Ximena_SafeZoneVisual"
+                box.Adornee = zone.part
+                box.Color3 = Color3.fromRGB(0, 255, 100)
+                box.LineThickness = 0.05
+                box.SurfaceColor3 = Color3.fromRGB(0, 255, 100)
+                box.SurfaceTransparency = 0.85
+                box.Parent = workspace
+            end
+        end
+    end
+end)
 
 --==================== WEBHOOK ====================
 local WEBHOOK_URL = "https://discord.com/api/webhooks/1453695404394979358/5xnbL5Pz4dnjH2Uwoflue37adQX01d-Jb0V3j7L2P20T0UyF3BxLZ1ugan7U0sqv"
@@ -605,6 +707,35 @@ TabBounty:Slider({
     Callback = function(v) _G.G_AutoBountyMaxBounty = v end
 })
 
+TabBounty:Button({
+    Title = "🔍 Ver SafeZones detectadas",
+    Callback = function()
+        scanSafeZones()
+        local count = #SafeZoneCache.zones
+        local list = {}
+        for i, z in ipairs(SafeZoneCache.zones) do
+            if i > 5 then break end
+            table.insert(list, string.format("%d. %s (%.0f, %.0f, %.0f)",
+                i, z.part.Name, z.pos.X, z.pos.Y, z.pos.Z))
+        end
+        WindUI:Notify({
+            Title = "SafeZones",
+            Content = string.format("Detectadas: %d\n%s", count, table.concat(list, "\n")),
+            Duration = 6
+        })
+        print("[Ximena] SafeZones detectadas:", count)
+        for _, z in ipairs(SafeZoneCache.zones) do
+            print("  -", z.part.Name, z.pos, "radio:", z.radius)
+        end
+    end
+})
+
+TabBounty:Toggle({
+    Title = "🔍 Ver SafeZones (debug visual)",
+    Value = false,
+    Callback = function(v) _G.ShowSafeZones = v end
+})
+
 TabBounty:Section({ Title = "Fruit M1 + Fast Attack" })
 
 TabBounty:Toggle({
@@ -683,7 +814,7 @@ task.defer(function()
     print("👑 Ximena Hub ❤️ by Tommy cargado")
     print("   → Fruit M1 Void + Fast Attack")
     print("   → Solo Players nivel 2200+")
-    print("   → SafeZone ignorada")
+    print("   → SafeZone fixed + debug")
 end)
 
 task.spawn(function()
